@@ -43,7 +43,11 @@ export const QuickStatsCards: React.FC<QuickStatsCardsProps> = ({
 
         <div className="flex items-center gap-1 text-[11px] text-[#006948] font-semibold leading-tight">
           <TrendingDown className="w-3.5 h-3.5 text-[#00855d] shrink-0" />
-          <span>{belowAveragePercentage}% di bawah rata-rata</span>
+          <span>
+            {todayTransactionsCount === 0
+              ? 'Belum ada pengeluaran hari ini'
+              : `${belowAveragePercentage}% di bawah rata-rata`}
+          </span>
         </div>
       </div>
 

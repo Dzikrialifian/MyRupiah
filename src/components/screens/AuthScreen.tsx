@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User, ArrowRight, Sparkles, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, AlertCircle, ShieldCheck, Eye, EyeOff, Globe } from 'lucide-react';
 
 interface AuthScreenProps {
   onEmailLogin: (email: string, pass: string) => Promise<void>;
   onEmailRegister: (email: string, pass: string, name: string) => Promise<void>;
   onGoogleSignIn: () => Promise<void>;
-  onDemoLogin: (email: string, name: string) => void;
   isLoading: boolean;
   errorMessage: string | null;
   clearError: () => void;
@@ -15,7 +14,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   onEmailLogin,
   onEmailRegister,
   onGoogleSignIn,
-  onDemoLogin,
   isLoading,
   errorMessage,
   clearError,
@@ -24,17 +22,21 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password) return;
 
     if (isRegister) {
-      await onEmailRegister(email.trim(), password, name.trim() || 'Pengguna Baru');
+      await onEmailRegister(email.trim(), password, name.trim() || 'Pengguna');
     } else {
       await onEmailLogin(email.trim(), password);
     }
   };
+
+  const isDomainError = errorMessage && errorMessage.includes('unauthorized-domain');
+  const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'domain ini';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#eafaf2] via-[#f0fbf6] to-[#f8f9ff] flex flex-col justify-center items-center px-4 py-8">
@@ -62,12 +64,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             MY RUPIAH • DOMPET PINTAR
           </span>
           <h1 className="text-2xl font-extrabold text-[#0b1c30] mt-1 tracking-tight">
-            {isRegister ? 'Buat Akun Baru' : 'Selamat Datang Kembali'}
+            {isRegister ? 'Daftar Akun Baru' : 'Masuk ke Akun'}
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             {isRegister
-              ? 'Daftar untuk memantau anggaran & sinkronisasi mutasi'
-              : 'Masuk dengan email untuk mengakses riwayat & mutasi kamu'}
+              ? 'Daftar dengan email Anda untuk mulai mengelola keuangan'
+              : 'Gunakan email terdaftar Anda untuk mengakses catatan transaksi'}
           </p>
         </div>
 
@@ -103,11 +105,29 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           </button>
         </div>
 
-        {/* Error message */}
+        {/* Error message card */}
         {errorMessage && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{errorMessage}</span>
+          <div className="mb-4 p-3.5 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-700 space-y-1.5">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
+              <span className="font-semibold leading-snug">{errorMessage}</span>
+            </div>
+
+            {/* Special Vercel / Domain guidance */}
+            {isDomainError && (
+              <div className="mt-2 pt-2 border-t border-red-200/80 text-[11px] text-slate-700 bg-white/70 p-2.5 rounded-xl">
+                <span className="font-bold flex items-center gap-1 text-slate-900 mb-1">
+                  <Globe className="w-3.5 h-3.5 text-blue-600" />
+                  Solusi untuk domain Vercel ({currentHost}):
+                </span>
+                <p className="leading-relaxed text-slate-600">
+                  Untuk login dengan Google di Vercel: Buka <strong>Firebase Console &gt; Authentication &gt; Settings &gt; Authorized domains</strong>, lalu klik <strong>Add domain</strong> dan masukkan <code className="bg-slate-150 px-1 py-0.5 rounded font-mono text-[10px] text-slate-900">{currentHost}</code>.
+                </p>
+                <p className="mt-1 font-semibold text-emerald-800">
+                  💡 Tips: Anda dapat langsung mendaftar atau masuk menggunakan <strong>Email &amp; Kata Sandi</strong> di formulir atas tanpa kendala domain.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -156,7 +176,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             <div className="flex items-center bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3.5 h-11 focus-within:border-[#006948] focus-within:ring-2 focus-within:ring-[#10B981]/20">
               <Lock className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Minimal 6 karakter"
@@ -164,6 +184,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 className="w-full text-xs font-medium text-slate-900 bg-transparent outline-none placeholder-slate-400"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+                aria-label={showPassword ? 'Sembunyikan sandi' : 'Tampilkan sandi'}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
@@ -211,36 +239,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
             />
           </svg>
-          <span>Masuk dengan Google (Sheets & Drive Aktif)</span>
+          <span>Masuk dengan Google (Sheets & Drive)</span>
         </button>
 
-        {/* Demo Fast Login Pills */}
-        <div className="mt-5 pt-4 border-t border-slate-100 text-center">
-          <span className="text-[11px] font-medium text-slate-400 block mb-2">
-            Akses Cepat Pengujian Demo:
-          </span>
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <button
-              type="button"
-              onClick={() => onDemoLogin('dzikrialifian@gmail.com', 'Dzikri Rian')}
-              className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-[#006948] rounded-lg text-[11px] font-bold border border-emerald-200 transition-colors"
-            >
-              dzikrialifian@gmail.com (Default)
-            </button>
-            <button
-              type="button"
-              onClick={() => onDemoLogin('finance.rian@dompet.id', 'Rian Professional')}
-              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold transition-colors"
-            >
-              finance.rian@dompet.id
-            </button>
-          </div>
-        </div>
-
         {/* Security badge */}
-        <div className="mt-4 flex items-center justify-center gap-1.5 text-[10px] text-slate-400">
+        <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-center gap-1.5 text-[10px] text-slate-400">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Tersimpan aman di Firebase Cloud Firestore & Spreadsheet</span>
+          <span>Data tersimpan privat berdasarkan akun email Anda</span>
         </div>
       </div>
     </div>

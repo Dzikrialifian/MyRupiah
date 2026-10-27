@@ -85,7 +85,19 @@ export default function App() {
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     try {
       const saved = localStorage.getItem('myrupiah_transactions');
-      return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Clear any old mock demo transactions from earlier versions
+        const isLegacyMock =
+          Array.isArray(parsed) &&
+          parsed.some((t: any) => t.id === 'trx-1' || t.id === 'trx-2' || t.id === 'trx-3');
+        if (isLegacyMock) {
+          localStorage.removeItem('myrupiah_transactions');
+          return [];
+        }
+        return parsed;
+      }
+      return INITIAL_TRANSACTIONS;
     } catch {
       return INITIAL_TRANSACTIONS;
     }
@@ -175,14 +187,8 @@ export default function App() {
   }, [transactions]);
 
   const weeklySpent = useMemo(() => {
-    const initialSum = INITIAL_TRANSACTIONS.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-    const currentSum = weeklyExpenseTransactions.reduce((s, t) => s + t.amount, 0);
-
-    if (transactions.length === INITIAL_TRANSACTIONS.length && currentSum === initialSum) {
-      return 1350000;
-    }
-    return currentSum;
-  }, [weeklyExpenseTransactions, transactions]);
+    return weeklyExpenseTransactions.reduce((s, t) => s + t.amount, 0);
+  }, [weeklyExpenseTransactions]);
 
   // Today transactions (Hari ini)
   const todayTransactions = useMemo(() => {
@@ -205,7 +211,7 @@ export default function App() {
     setDailySpends((prev) =>
       prev.map((d) => {
         if (d.dayKey === 'Jum') {
-          return { ...d, amount: todaySpent > 0 ? todaySpent : 85000 };
+          return { ...d, amount: todaySpent };
         }
         return d;
       })
@@ -387,21 +393,6 @@ export default function App() {
     } finally {
       setAuthLoading(false);
     }
-  };
-
-  // Demo Fast Login
-  const handleDemoLogin = async (demoEmail: string, demoName: string) => {
-    const demoUid = `demo-${demoEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
-    setGoogleUid(demoUid);
-    setGoogleEmail(demoEmail);
-    const updatedUser: UserProfile = {
-      ...user,
-      name: demoName,
-      email: demoEmail,
-    };
-    setUser(updatedUser);
-    setIsAuthenticated(true);
-    await loadUserFirestoreData(demoUid, demoEmail);
   };
 
   // Connect Google account & run first sync for Firestore & Sheets
@@ -701,7 +692,6 @@ export default function App() {
         onEmailLogin={handleEmailLogin}
         onEmailRegister={handleEmailRegister}
         onGoogleSignIn={handleConnectGoogle}
-        onDemoLogin={handleDemoLogin}
         isLoading={authLoading}
         errorMessage={authError}
         clearError={() => setAuthError(null)}
@@ -739,9 +729,9 @@ export default function App() {
 
               {/* Quick Stats: Hari Ini & Rata-rata */}
               <QuickStatsCards
-                todaySpent={todaySpent > 0 ? todaySpent : 85000}
-                todayTransactionsCount={todayCount > 0 ? todayCount : 3}
-                dailyAllowance={dailyAllowance > 0 ? dailyAllowance : 192850}
+                todaySpent={todaySpent}
+                todayTransactionsCount={todayCount}
+                dailyAllowance={dailyAllowance}
                 daysRemaining={daysRemaining}
                 belowAveragePercentage={56}
                 onTodayClick={() => setActiveTab('riwayat')}

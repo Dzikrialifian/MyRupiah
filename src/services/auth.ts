@@ -77,6 +77,10 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
     console.error('Google Sign in error:', error);
+    if (error.code === 'auth/unauthorized-domain' || error.message?.includes('unauthorized-domain')) {
+      const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'domain ini';
+      throw new Error(`unauthorized-domain: Domain "${currentHost}" belum didaftarkan di Firebase Console. Untuk mengizinkannya di Vercel, buka Firebase Console > Authentication > Settings > Authorized domains > Add domain "${currentHost}". Atau silakan masuk dengan Email & Kata Sandi.`);
+    }
     throw error;
   } finally {
     isSigningIn = false;
