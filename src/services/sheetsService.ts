@@ -120,6 +120,7 @@ export async function getOrCreateSpreadsheet(accessToken: string): Promise<strin
   const headers = [
     'ID Transaksi',
     'Tanggal',
+    'Email Pengguna',
     'Judul / Keterangan',
     'Tipe',
     'Kategori',
@@ -130,7 +131,7 @@ export async function getOrCreateSpreadsheet(accessToken: string): Promise<strin
   ];
 
   await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'Daftar Transaksi'!A1:I1?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'Daftar Transaksi'!A1:J1?valueInputOption=USER_ENTERED`,
     {
       method: 'PUT',
       headers: {
@@ -199,11 +200,12 @@ export async function getOrCreateSpreadsheet(accessToken: string): Promise<strin
 /**
  * Converts transaction items to 2D array for Google Sheets
  */
-export function transactionsToRows(transactions: Transaction[]): any[][] {
+export function transactionsToRows(transactions: Transaction[], userEmail?: string): any[][] {
   const now = new Date().toLocaleString('id-ID');
   return transactions.map((t) => [
     t.id,
     t.dateStr,
+    t.userEmail || userEmail || '-',
     t.title,
     t.type === 'expense' ? 'Pengeluaran' : 'Pemasukan',
     t.categoryName,
@@ -220,13 +222,14 @@ export function transactionsToRows(transactions: Transaction[]): any[][] {
 export async function syncAllTransactionsToSheet(
   accessToken: string,
   spreadsheetId: string,
-  transactions: Transaction[]
+  transactions: Transaction[],
+  userEmail?: string
 ): Promise<void> {
-  const rows = transactionsToRows(transactions);
+  const rows = transactionsToRows(transactions, userEmail);
 
   // 1. Clear existing rows from row 2 onwards
   await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'Daftar Transaksi'!A2:I1000:clear`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'Daftar Transaksi'!A2:J1000:clear`,
     {
       method: 'POST',
       headers: {
@@ -239,7 +242,7 @@ export async function syncAllTransactionsToSheet(
   // 2. Write new rows if there are any
   if (rows.length > 0) {
     const putRes = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'Daftar Transaksi'!A2:I${rows.length + 1}?valueInputOption=USER_ENTERED`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'Daftar Transaksi'!A2:J${rows.length + 1}?valueInputOption=USER_ENTERED`,
       {
         method: 'PUT',
         headers: {
@@ -267,7 +270,7 @@ export async function importTransactionsFromSheet(
   spreadsheetId: string
 ): Promise<Transaction[]> {
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'Daftar Transaksi'!A2:I1000`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'Daftar Transaksi'!A2:J1000`,
     {
       headers: { Authorization: `Bearer ${accessToken}` },
     }
@@ -282,12 +285,16 @@ export async function importTransactionsFromSheet(
   const rows: any[][] = data.values || [];
 
   return rows.map((row, index) => {
+    // Check if column 2 is an email (10-column format) or title (9-column format)
+    const hasEmailCol = typeof row[2] === 'string' && row[2].includes('@');
+
     const id = row[0] || `sheet-${Date.now()}-${index}`;
     const dateStr = row[1] || 'Hari ini, 12:00';
-    const title = row[2] || 'Transaksi';
-    const typeStr = (row[3] || '').toLowerCase();
+    const userEmail = hasEmailCol ? row[2] : undefined;
+    const title = (hasEmailCol ? row[3] : row[2]) || 'Transaksi';
+    const typeStr = ((hasEmailCol ? row[4] : row[3]) || '').toLowerCase();
     const type: TransactionType = typeStr.includes('pemasukan') ? 'income' : 'expense';
-    const categoryName = row[4] || 'Makanan & Minuman';
+    const categoryName = (hasEmailCol ? row[5] : row[4]) || 'Makanan & Minuman';
 
     // Reverse lookup categoryId
     const foundCatKey = (Object.keys(CATEGORIES) as CategoryId[]).find(
@@ -295,9 +302,11 @@ export async function importTransactionsFromSheet(
     );
     const category: CategoryId = foundCatKey || (type === 'income' ? 'income' : 'food');
 
-    const amountNum = typeof row[5] === 'number' ? row[5] : parseInt(String(row[5]).replace(/[^\d]/g, ''), 10) || 0;
-    const paymentMethod = row[6] || 'BCA QRIS';
-    const note = row[7] && row[7] !== '-' ? row[7] : undefined;
+    const rawAmt = hasEmailCol ? row[6] : row[5];
+    const amountNum = typeof rawAmt === 'number' ? rawAmt : parseInt(String(rawAmt).replace(/[^\d]/g, ''), 10) || 0;
+    const paymentMethod = (hasEmailCol ? row[7] : row[6]) || 'BCA QRIS';
+    const rawNote = hasEmailCol ? row[8] : row[7];
+    const note = rawNote && rawNote !== '-' ? rawNote : undefined;
 
     return {
       id,
@@ -310,6 +319,8 @@ export async function importTransactionsFromSheet(
       dateIso: new Date().toISOString().split('T')[0],
       paymentMethod,
       note,
+      userEmail,
     };
   });
 }
+

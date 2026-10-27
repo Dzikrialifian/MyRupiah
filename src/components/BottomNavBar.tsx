@@ -1,7 +1,7 @@
 import React from 'react';
-import { Home, ReceiptText, BarChart3, Lightbulb, Plus } from 'lucide-react';
+import { Home, ReceiptText, BarChart3, Lightbulb, User, Plus } from 'lucide-react';
 
-export type ScreenTab = 'beranda' | 'riwayat' | 'grafik' | 'saran';
+export type ScreenTab = 'beranda' | 'riwayat' | 'grafik' | 'saran' | 'akun';
 
 interface BottomNavBarProps {
   currentTab: ScreenTab;
@@ -19,6 +19,7 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
     { id: 'riwayat' as ScreenTab, label: 'Riwayat', icon: ReceiptText },
     { id: 'grafik' as ScreenTab, label: 'Grafik', icon: BarChart3 },
     { id: 'saran' as ScreenTab, label: 'Saran', icon: Lightbulb },
+    { id: 'akun' as ScreenTab, label: 'Akun', icon: User },
   ];
 
   return (

@@ -21,9 +21,11 @@ import { RecentTransactionsList } from './components/RecentTransactionsList';
 import { BottomNavBar, ScreenTab } from './components/BottomNavBar';
 
 // Screens
+import { AuthScreen } from './components/screens/AuthScreen';
 import { HistoryScreen } from './components/screens/HistoryScreen';
 import { AnalyticsScreen } from './components/screens/AnalyticsScreen';
 import { AdviceScreen } from './components/screens/AdviceScreen';
+import { AccountSettingsScreen } from './components/screens/AccountSettingsScreen';
 
 // Modals
 import { TransactionFormModal } from './components/modals/TransactionFormModal';
@@ -35,7 +37,7 @@ import { TipsDetailModal } from './components/modals/TipsDetailModal';
 import { WeekPickerModal } from './components/modals/WeekPickerModal';
 
 // Google Workspace & Sheets Services
-import { initAuth, googleSignIn, getAccessToken, logout } from './services/auth';
+import { initAuth, googleSignIn, emailSignIn, emailSignUp, getAccessToken, logout } from './services/auth';
 import {
   SyncStatus,
   getSavedSpreadsheetId,
@@ -57,13 +59,26 @@ import {
 } from './services/firebaseService';
 
 export default function App() {
+  // Authentication Gate State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('myrupiah_authenticated') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
   // Persistence state
   const [user, setUser] = useState<UserProfile>(() => {
     try {
       const saved = localStorage.getItem('myrupiah_user');
-      return saved ? JSON.parse(saved) : INITIAL_USER;
+      if (saved) return JSON.parse(saved);
+      return { ...INITIAL_USER, email: 'dzikrialifian@gmail.com' };
     } catch {
-      return INITIAL_USER;
+      return { ...INITIAL_USER, email: 'dzikrialifian@gmail.com' };
     }
   });
 
@@ -89,8 +104,15 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<ScreenTab>('beranda');
 
   // Google & Firebase integration state
-  const [googleEmail, setGoogleEmail] = useState<string | null>(null);
-  const [googleUid, setGoogleUid] = useState<string | null>(null);
+  const [googleEmail, setGoogleEmail] = useState<string | null>(user.email || null);
+  const [googleUid, setGoogleUid] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('myrupiah_uid');
+    } catch {
+      return null;
+    }
+  });
+
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
     isConnected: false,
     spreadsheetId: getSavedSpreadsheetId(),
@@ -115,6 +137,12 @@ export default function App() {
   // Sync to localStorage
   useEffect(() => {
     try {
+      localStorage.setItem('myrupiah_authenticated', String(isAuthenticated));
+    } catch {}
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    try {
       localStorage.setItem('myrupiah_user', JSON.stringify(user));
     } catch {}
   }, [user]);
@@ -130,6 +158,16 @@ export default function App() {
       localStorage.setItem('myrupiah_category_budgets', JSON.stringify(categoryBudgets));
     } catch {}
   }, [categoryBudgets]);
+
+  useEffect(() => {
+    try {
+      if (googleUid) {
+        localStorage.setItem('myrupiah_uid', googleUid);
+      } else {
+        localStorage.removeItem('myrupiah_uid');
+      }
+    } catch {}
+  }, [googleUid]);
 
   // Derived budget calculations
   const weeklyExpenseTransactions = useMemo(() => {
@@ -174,50 +212,63 @@ export default function App() {
     );
   }, [todaySpent]);
 
-  // Initialize Auth listener and Firebase Firestore syncing on mount
+  // Helper: Load data from Firestore for a given user UID
+  const loadUserFirestoreData = useCallback(async (uid: string, fallbackEmail?: string) => {
+    try {
+      const remoteTxs = await fetchTransactionsFromFirestore(uid);
+      if (remoteTxs && remoteTxs.length > 0) {
+        setTransactions(remoteTxs);
+      } else {
+        // Seed current transactions to Firestore with userEmail
+        for (const t of transactions) {
+          await saveTransactionToFirestore(uid, {
+            ...t,
+            userEmail: fallbackEmail || user.email || 'dzikrialifian@gmail.com',
+          });
+        }
+      }
+
+      const remoteProfile = await fetchUserProfileFromFirestore(uid);
+      if (remoteProfile && remoteProfile.name) {
+        setUser((prev) => ({
+          ...prev,
+          ...remoteProfile,
+          email: remoteProfile.email || fallbackEmail || prev.email,
+        }));
+      } else {
+        await saveUserProfileToFirestore(uid, {
+          ...user,
+          email: fallbackEmail || user.email,
+        });
+      }
+
+      const remoteBudgets = await fetchCategoryBudgetsFromFirestore(uid);
+      if (remoteBudgets && remoteBudgets.length > 0) {
+        setCategoryBudgets(remoteBudgets);
+      } else {
+        await saveCategoryBudgetsToFirestore(uid, categoryBudgets);
+      }
+    } catch (err) {
+      console.warn('Firestore initial sync non-critical warning:', err);
+    }
+  }, [transactions, user, categoryBudgets]);
+
+  // Initialize Auth listener
   useEffect(() => {
     const unsubscribe = initAuth(
       async (currentUser, token) => {
         setGoogleEmail(currentUser.email);
         setGoogleUid(currentUser.uid);
+        setIsAuthenticated(true);
         setSyncStatus((prev) => ({
           ...prev,
           isConnected: true,
           error: null,
         }));
 
-        // Load data from Firestore if exists, or seed initial data
-        try {
-          const remoteTxs = await fetchTransactionsFromFirestore(currentUser.uid);
-          if (remoteTxs && remoteTxs.length > 0) {
-            setTransactions(remoteTxs);
-          } else {
-            // Seed current transactions to Firestore
-            for (const t of transactions) {
-              await saveTransactionToFirestore(currentUser.uid, t);
-            }
-          }
-
-          const remoteProfile = await fetchUserProfileFromFirestore(currentUser.uid);
-          if (remoteProfile && remoteProfile.name) {
-            setUser((prev) => ({ ...prev, ...remoteProfile }));
-          } else {
-            await saveUserProfileToFirestore(currentUser.uid, user);
-          }
-
-          const remoteBudgets = await fetchCategoryBudgetsFromFirestore(currentUser.uid);
-          if (remoteBudgets && remoteBudgets.length > 0) {
-            setCategoryBudgets(remoteBudgets);
-          } else {
-            await saveCategoryBudgetsToFirestore(currentUser.uid, categoryBudgets);
-          }
-        } catch (err) {
-          console.warn('Firestore initial sync non-critical warning:', err);
-        }
+        await loadUserFirestoreData(currentUser.uid, currentUser.email || undefined);
       },
       () => {
-        setGoogleEmail(null);
-        setGoogleUid(null);
         setSyncStatus((prev) => ({
           ...prev,
           isConnected: false,
@@ -226,7 +277,7 @@ export default function App() {
     );
 
     return () => unsubscribe();
-  }, []);
+  }, [loadUserFirestoreData]);
 
   // Helper to sync transactions to spreadsheet if connected
   const syncTransactionsIfConnected = useCallback(
@@ -237,7 +288,7 @@ export default function App() {
       try {
         setSyncStatus((prev) => ({ ...prev, isSyncing: true, error: null }));
         const sheetId = await getOrCreateSpreadsheet(token);
-        await syncAllTransactionsToSheet(token, sheetId, txList);
+        await syncAllTransactionsToSheet(token, sheetId, txList, user.email || 'dzikrialifian@gmail.com');
 
         const nowStr = new Date().toLocaleTimeString('id-ID', {
           hour: '2-digit',
@@ -261,11 +312,102 @@ export default function App() {
         }));
       }
     },
-    []
+    [user.email]
   );
+
+  // Email Login Handler
+  const handleEmailLogin = async (email: string, pass: string) => {
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      const loggedUser = await emailSignIn(email, pass);
+      const uid = loggedUser.uid;
+      setGoogleUid(uid);
+      setGoogleEmail(loggedUser.email);
+      setUser((prev) => ({
+        ...prev,
+        email: loggedUser.email || email,
+        name: loggedUser.displayName || prev.name,
+      }));
+      setIsAuthenticated(true);
+      await loadUserFirestoreData(uid, loggedUser.email || email);
+    } catch (err: any) {
+      console.warn('Firebase email login error:', err);
+      // Helpful fallback message if email/pass provider is pending in Firebase Console
+      if (err.code === 'auth/operation-not-allowed') {
+        setAuthError(
+          'Penyedia Email/Password belum diaktifkan di Firebase Console. Kamu bisa masuk menggunakan tombol "Masuk dengan Google" atau tombol "Akses Cepat Pengujian Demo".'
+        );
+      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setAuthError('Email atau kata sandi tidak sesuai. Silakan periksa kembali.');
+      } else if (err.code === 'auth/user-not-found') {
+        setAuthError('Akun belum terdaftar. Silakan pilih tab "Daftar Akun".');
+      } else {
+        setAuthError(err.message || 'Gagal masuk dengan email.');
+      }
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // Email Register Handler
+  const handleEmailRegister = async (email: string, pass: string, displayName: string) => {
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      const newUser = await emailSignUp(email, pass, displayName);
+      const uid = newUser.uid;
+      setGoogleUid(uid);
+      setGoogleEmail(newUser.email);
+      const updatedProfile = {
+        ...user,
+        email: newUser.email || email,
+        name: displayName,
+      };
+      setUser(updatedProfile);
+      setIsAuthenticated(true);
+
+      // Create new clean profile in Firestore
+      await saveUserProfileToFirestore(uid, updatedProfile);
+      for (const t of transactions) {
+        await saveTransactionToFirestore(uid, { ...t, userEmail: email });
+      }
+      await saveCategoryBudgetsToFirestore(uid, categoryBudgets);
+    } catch (err: any) {
+      console.warn('Firebase email register error:', err);
+      if (err.code === 'auth/email-already-in-use') {
+        setAuthError('Email ini sudah terdaftar. Silakan pilih tab "Masuk".');
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setAuthError(
+          'Penyedia Email/Password belum diaktifkan di Firebase Console. Silakan gunakan opsi Google Sign-In atau Akses Cepat Demo.'
+        );
+      } else {
+        setAuthError(err.message || 'Gagal mendaftarkan akun.');
+      }
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // Demo Fast Login
+  const handleDemoLogin = async (demoEmail: string, demoName: string) => {
+    const demoUid = `demo-${demoEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    setGoogleUid(demoUid);
+    setGoogleEmail(demoEmail);
+    const updatedUser: UserProfile = {
+      ...user,
+      name: demoName,
+      email: demoEmail,
+    };
+    setUser(updatedUser);
+    setIsAuthenticated(true);
+    await loadUserFirestoreData(demoUid, demoEmail);
+  };
 
   // Connect Google account & run first sync for Firestore & Sheets
   const handleConnectGoogle = async () => {
+    setAuthLoading(true);
+    setAuthError(null);
     try {
       setSyncStatus((prev) => ({ ...prev, isSyncing: true, error: null }));
       const result = await googleSignIn();
@@ -273,17 +415,34 @@ export default function App() {
 
       setGoogleEmail(result.user.email);
       setGoogleUid(result.user.uid);
+      setIsAuthenticated(true);
+
+      const updatedProfile = {
+        ...user,
+        email: result.user.email || user.email,
+        name: result.user.displayName || user.name,
+        avatarUrl: result.user.photoURL || user.avatarUrl,
+      };
+      setUser(updatedProfile);
 
       // Save user & transactions to Firestore
-      await saveUserProfileToFirestore(result.user.uid, user);
+      await saveUserProfileToFirestore(result.user.uid, updatedProfile);
       for (const t of transactions) {
-        await saveTransactionToFirestore(result.user.uid, t);
+        await saveTransactionToFirestore(result.user.uid, {
+          ...t,
+          userEmail: result.user.email || undefined,
+        });
       }
       await saveCategoryBudgetsToFirestore(result.user.uid, categoryBudgets);
 
       // Sync to Google Sheets
       const sheetId = await getOrCreateSpreadsheet(result.accessToken);
-      await syncAllTransactionsToSheet(result.accessToken, sheetId, transactions);
+      await syncAllTransactionsToSheet(
+        result.accessToken,
+        sheetId,
+        transactions,
+        result.user.email || undefined
+      );
 
       const nowStr = new Date().toLocaleTimeString('id-ID', {
         hour: '2-digit',
@@ -300,19 +459,23 @@ export default function App() {
       });
     } catch (err: any) {
       console.error('Google sign in error:', err);
+      setAuthError(err.message || 'Gagal login dengan akun Google.');
       setSyncStatus((prev) => ({
         ...prev,
         isSyncing: false,
         error: err.message || 'Gagal login dengan akun Google.',
       }));
+    } finally {
+      setAuthLoading(false);
     }
   };
 
-  // Disconnect Google account
-  const handleDisconnectGoogle = async () => {
+  // Disconnect / Logout
+  const handleLogout = async () => {
     await logout();
     setGoogleEmail(null);
     setGoogleUid(null);
+    setIsAuthenticated(false);
     setSyncStatus((prev) => ({
       ...prev,
       isConnected: false,
@@ -331,7 +494,10 @@ export default function App() {
     await syncTransactionsIfConnected(transactions);
     if (googleUid) {
       for (const t of transactions) {
-        await saveTransactionToFirestore(googleUid, t);
+        await saveTransactionToFirestore(googleUid, {
+          ...t,
+          userEmail: user.email || 'dzikrialifian@gmail.com',
+        });
       }
     }
   };
@@ -365,7 +531,10 @@ export default function App() {
         // Sync imported data to Firestore as well
         if (googleUid) {
           for (const t of imported) {
-            await saveTransactionToFirestore(googleUid, t);
+            await saveTransactionToFirestore(googleUid, {
+              ...t,
+              userEmail: user.email || undefined,
+            });
           }
           await saveCategoryBudgetsToFirestore(googleUid, updatedBudgets);
         }
@@ -399,7 +568,11 @@ export default function App() {
     if (editId) {
       // UPDATE operation
       const oldTrx = transactions.find((t) => t.id === editId);
-      const updatedItem: Transaction = { ...trxData, id: editId };
+      const updatedItem: Transaction = {
+        ...trxData,
+        id: editId,
+        userEmail: user.email || 'dzikrialifian@gmail.com',
+      };
       updatedList = transactions.map((t) => (t.id === editId ? updatedItem : t));
       setTransactions(updatedList);
 
@@ -431,6 +604,7 @@ export default function App() {
       const newTrx: Transaction = {
         ...trxData,
         id: `trx-${Date.now()}`,
+        userEmail: user.email || 'dzikrialifian@gmail.com',
       };
       updatedList = [newTrx, ...transactions];
       setTransactions(updatedList);
@@ -492,7 +666,7 @@ export default function App() {
 
   // Reset to initial demo data
   const handleResetDemoData = () => {
-    setUser(INITIAL_USER);
+    setUser({ ...INITIAL_USER, email: user.email || 'dzikrialifian@gmail.com' });
     setTransactions(INITIAL_TRANSACTIONS);
     setCategoryBudgets(INITIAL_CATEGORY_BUDGETS);
     setDailySpends(INITIAL_DAILY_SPENDS);
@@ -513,10 +687,27 @@ export default function App() {
         return 'Grafik';
       case 'saran':
         return 'Saran';
+      case 'akun':
+        return 'Akun & Profil';
       default:
         return 'Beranda';
     }
   }, [activeTab]);
+
+  // Auth Gate: If user is not authenticated, show sleek AuthScreen first!
+  if (!isAuthenticated) {
+    return (
+      <AuthScreen
+        onEmailLogin={handleEmailLogin}
+        onEmailRegister={handleEmailRegister}
+        onGoogleSignIn={handleConnectGoogle}
+        onDemoLogin={handleDemoLogin}
+        isLoading={authLoading}
+        errorMessage={authError}
+        clearError={() => setAuthError(null)}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#eaf1ff]/60 flex justify-center selection:bg-emerald-100 selection:text-emerald-900">
@@ -526,7 +717,7 @@ export default function App() {
           user={user}
           activeScreenTitle={activeTitle}
           onOpenNotifications={() => setIsNotificationsOpen(true)}
-          onOpenProfile={() => setIsProfileModalOpen(true)}
+          onOpenProfile={() => setActiveTab('akun')}
         />
 
         {/* Dynamic Screen View */}
@@ -590,10 +781,10 @@ export default function App() {
                   setIsFormModalOpen(true);
                 }}
                 onRequestDeleteTransaction={(trx) => setDeletingTransaction(trx)}
-                userEmail={googleEmail}
+                userEmail={user.email || googleEmail}
                 syncStatus={syncStatus}
                 onConnectGoogle={handleConnectGoogle}
-                onDisconnectGoogle={handleDisconnectGoogle}
+                onDisconnectGoogle={handleLogout}
                 onManualSync={handleManualSync}
                 onImportFromSheets={handleImportFromSheets}
               />
@@ -624,6 +815,26 @@ export default function App() {
                   }
                 }}
                 onOpenTipsModal={() => setIsTipsModalOpen(true)}
+              />
+            </div>
+          )}
+
+          {activeTab === 'akun' && (
+            <div className="animate-fade-in">
+              <AccountSettingsScreen
+                user={user}
+                onUpdateUser={(updated) => {
+                  const nextUser = { ...user, ...updated };
+                  setUser(nextUser);
+                  if (googleUid) {
+                    saveUserProfileToFirestore(googleUid, nextUser).catch((e) => console.warn(e));
+                  }
+                }}
+                onLogout={handleLogout}
+                onResetData={handleResetDemoData}
+                syncStatus={syncStatus}
+                onConnectGoogle={handleConnectGoogle}
+                onManualSync={handleManualSync}
               />
             </div>
           )}
@@ -672,21 +883,6 @@ export default function App() {
           onClose={() => setDeletingTransaction(null)}
           onConfirmDelete={handleDeleteTransaction}
           isGoogleConnected={syncStatus.isConnected}
-        />
-
-        {/* Modal: Pengaturan Profil & Anggaran */}
-        <BudgetSettingsModal
-          isOpen={isProfileModalOpen}
-          onClose={() => setIsProfileModalOpen(false)}
-          user={user}
-          onUpdateUser={(updated) => {
-            const nextUser = { ...user, ...updated };
-            setUser(nextUser);
-            if (googleUid) {
-              saveUserProfileToFirestore(googleUid, nextUser).catch((e) => console.warn(e));
-            }
-          }}
-          onResetData={handleResetDemoData}
         />
 
         {/* Drawer: Notifikasi */}

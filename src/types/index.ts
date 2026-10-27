@@ -30,6 +30,7 @@ export interface Transaction {
   dateIso: string; // YYYY-MM-DD
   paymentMethod: string;
   note?: string;
+  userEmail?: string;
 }
 
 export interface DaySpend {
@@ -56,4 +57,5 @@ export interface UserProfile {
   avatarUrl: string;
   totalWeeklyBudget: number;
   currentWeekText: string;
+  email?: string;
 }

@@ -6,6 +6,9 @@ import {
   onAuthStateChanged,
   User,
   signOut,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
 } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -80,6 +83,19 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
   }
 };
 
+export const emailSignIn = async (email: string, pass: string): Promise<User> => {
+  const cred = await signInWithEmailAndPassword(auth, email, pass);
+  return cred.user;
+};
+
+export const emailSignUp = async (email: string, pass: string, displayName?: string): Promise<User> => {
+  const cred = await createUserWithEmailAndPassword(auth, email, pass);
+  if (displayName) {
+    await updateProfile(cred.user, { displayName });
+  }
+  return cred.user;
+};
+
 export const getAccessToken = async (): Promise<string | null> => {
   return cachedAccessToken;
 };
@@ -88,3 +104,4 @@ export const logout = async () => {
   await signOut(auth);
   cachedAccessToken = null;
 };
+

@@ -72,6 +72,7 @@ export async function saveUserProfileToFirestore(userId: string, user: UserProfi
       {
         uid: userId,
         name: user.name,
+        email: user.email || '',
         totalWeeklyBudget: user.totalWeeklyBudget,
         currentWeekText: user.currentWeekText,
         avatarUrl: user.avatarUrl,
@@ -93,6 +94,7 @@ export async function fetchUserProfileFromFirestore(userId: string): Promise<Par
     const data = snap.data();
     return {
       name: data.name,
+      email: data.email,
       totalWeeklyBudget: data.totalWeeklyBudget,
       currentWeekText: data.currentWeekText,
       avatarUrl: data.avatarUrl,
@@ -112,6 +114,7 @@ export async function saveTransactionToFirestore(userId: string, transaction: Tr
       {
         id: transaction.id,
         userId,
+        userEmail: transaction.userEmail || '',
         title: transaction.title,
         amount: transaction.amount,
         type: transaction.type,
@@ -160,6 +163,7 @@ export async function fetchTransactionsFromFirestore(userId: string): Promise<Tr
         dateIso: data.dateIso || '',
         paymentMethod: data.paymentMethod,
         note: data.note || undefined,
+        userEmail: data.userEmail || undefined,
       });
     });
 

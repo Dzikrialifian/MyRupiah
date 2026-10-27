@@ -41,7 +41,9 @@ service cloud.firestore {
         incoming().name.size() > 0 &&
         incoming().name.size() <= 100 &&
         incoming().totalWeeklyBudget is number &&
-        incoming().totalWeeklyBudget > 0;
+        incoming().totalWeeklyBudget > 0 &&
+        (!('email' in incoming()) || (incoming().email is string && incoming().email.size() <= 200)) &&
+        (!('avatarUrl' in incoming()) || (incoming().avatarUrl is string && incoming().avatarUrl.size() <= 1000));
 
       allow update: if isOwner(userId) &&
         isValidId(userId) &&
@@ -50,7 +52,9 @@ service cloud.firestore {
         incoming().name.size() > 0 &&
         incoming().name.size() <= 100 &&
         incoming().totalWeeklyBudget is number &&
-        incoming().totalWeeklyBudget > 0;
+        incoming().totalWeeklyBudget > 0 &&
+        (!('email' in incoming()) || (incoming().email is string && incoming().email.size() <= 200)) &&
+        (!('avatarUrl' in incoming()) || (incoming().avatarUrl is string && incoming().avatarUrl.size() <= 1000));
 
       allow delete: if isOwner(userId);
 
@@ -75,7 +79,8 @@ service cloud.firestore {
           incoming().categoryName is string &&
           incoming().categoryName.size() <= 100 &&
           incoming().paymentMethod is string &&
-          incoming().paymentMethod.size() <= 50;
+          incoming().paymentMethod.size() <= 50 &&
+          (!('userEmail' in incoming()) || (incoming().userEmail is string && incoming().userEmail.size() <= 200));
 
         allow update: if isOwner(userId) &&
           isValidId(transactionId) &&
@@ -92,7 +97,8 @@ service cloud.firestore {
           incoming().categoryName is string &&
           incoming().categoryName.size() <= 100 &&
           incoming().paymentMethod is string &&
-          incoming().paymentMethod.size() <= 50;
+          incoming().paymentMethod.size() <= 50 &&
+          (!('userEmail' in incoming()) || (incoming().userEmail is string && incoming().userEmail.size() <= 200));
 
         allow delete: if isOwner(userId) && isValidId(transactionId);
       }
