@@ -813,11 +813,15 @@ export default function App() {
             <div className="animate-fade-in">
               <AccountSettingsScreen
                 user={user}
-                onUpdateUser={(updated) => {
+                onUpdateUser={async (updated) => {
                   const nextUser = { ...user, ...updated };
                   setUser(nextUser);
                   if (googleUid) {
-                    saveUserProfileToFirestore(googleUid, nextUser).catch((e) => console.warn(e));
+                    try {
+                      await saveUserProfileToFirestore(googleUid, nextUser);
+                    } catch (e) {
+                      console.warn('Firestore update warning:', e);
+                    }
                   }
                 }}
                 onLogout={handleLogout}

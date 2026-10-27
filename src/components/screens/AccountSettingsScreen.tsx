@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   User,
   Mail,
   Target,
-  Image,
   Check,
   RotateCcw,
   LogOut,
@@ -12,6 +11,10 @@ import {
   FileSpreadsheet,
   Database,
   Camera,
+  X,
+  Loader2,
+  Sparkles,
+  Info,
 } from 'lucide-react';
 import { UserProfile } from '../../types';
 import { formatRupiah, parseRupiahInput } from '../../utils/format';
@@ -19,12 +22,19 @@ import { SyncStatus } from '../../services/sheetsService';
 
 interface AccountSettingsScreenProps {
   user: UserProfile;
-  onUpdateUser: (updated: Partial<UserProfile>) => void;
+  onUpdateUser: (updated: Partial<UserProfile>) => Promise<void> | void;
   onLogout: () => void;
   onResetData: () => void;
   syncStatus: SyncStatus;
   onConnectGoogle: () => void;
   onManualSync: () => void;
+}
+
+interface ToastFeedback {
+  type: 'success' | 'info' | 'warning';
+  title: string;
+  message: string;
+  details?: string;
 }
 
 const AVATAR_PRESETS = [
@@ -43,46 +53,194 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
   onResetData,
   syncStatus,
   onConnectGoogle,
-  onManualSync,
 }) => {
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email || 'dzikrialifian@gmail.com');
   const [budgetStr, setBudgetStr] = useState(user.totalWeeklyBudget.toString());
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
-  const [isSavedToast, setIsSavedToast] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newBudget = parseRupiahInput(budgetStr);
+  // States for feedback notifications
+  const [isSaving, setIsSaving] = useState(false);
+  const [feedback, setFeedback] = useState<ToastFeedback | null>(null);
+  const [justSaved, setJustSaved] = useState(false);
 
-    onUpdateUser({
-      name: name.trim() || user.name,
-      email: email.trim() || user.email,
-      totalWeeklyBudget: newBudget > 0 ? newBudget : user.totalWeeklyBudget,
-      avatarUrl: avatarUrl.trim() || user.avatarUrl,
+  // Synchronize form when user prop changes externally
+  useEffect(() => {
+    setName(user.name);
+    setEmail(user.email || 'dzikrialifian@gmail.com');
+    setBudgetStr(user.totalWeeklyBudget.toString());
+    setAvatarUrl(user.avatarUrl);
+  }, [user]);
+
+  // Auto-dismiss toast after 4 seconds
+  useEffect(() => {
+    if (!feedback) return;
+    const timer = setTimeout(() => {
+      setFeedback(null);
+    }, 4500);
+    return () => clearTimeout(timer);
+  }, [feedback]);
+
+  // Detect unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    const currentBudget = parseRupiahInput(budgetStr);
+    return (
+      name.trim() !== user.name.trim() ||
+      email.trim() !== (user.email || '').trim() ||
+      currentBudget !== user.totalWeeklyBudget ||
+      avatarUrl.trim() !== user.avatarUrl.trim()
+    );
+  }, [name, email, budgetStr, avatarUrl, user]);
+
+  const handleSelectPresetAvatar = (preset: string) => {
+    setAvatarUrl(preset);
+    setFeedback({
+      type: 'info',
+      title: 'Foto Profil Dipilih',
+      message: 'Foto profil baru telah dipilih.',
+      details: "Klik tombol 'Simpan Pengaturan Akun' di bawah untuk menerapkan perubahan ke akun Anda.",
     });
+  };
 
-    setIsSavedToast(true);
-    setTimeout(() => setIsSavedToast(false), 3000);
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    const newBudget = parseRupiahInput(budgetStr);
+    const validBudget = newBudget > 0 ? newBudget : user.totalWeeklyBudget;
+
+    // Build specific list of what was changed for the feedback message
+    const changedFields: string[] = [];
+    if (name.trim() !== user.name.trim()) changedFields.push(`Nama ("${name.trim()}")`);
+    if (email.trim() !== (user.email || '').trim()) changedFields.push(`Email (${email.trim()})`);
+    if (validBudget !== user.totalWeeklyBudget) changedFields.push(`Batas Anggaran (${formatRupiah(validBudget)})`);
+    if (avatarUrl.trim() !== user.avatarUrl.trim()) changedFields.push('Foto Profil');
+
+    try {
+      await onUpdateUser({
+        name: name.trim() || user.name,
+        email: email.trim() || user.email,
+        totalWeeklyBudget: validBudget,
+        avatarUrl: avatarUrl.trim() || user.avatarUrl,
+      });
+
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 2500);
+
+      const changeSummary =
+        changedFields.length > 0
+          ? `Perubahan disimpan: ${changedFields.join(', ')}.`
+          : 'Pengaturan akun Anda berhasil diperbarui.';
+
+      setFeedback({
+        type: 'success',
+        title: 'Pengaturan Berhasil Disimpan!',
+        message: changeSummary,
+        details: 'Data telah diperbarui secara lokal dan tersimpan di database Firebase Firestore.',
+      });
+    } catch (err: any) {
+      console.error('Error saving account settings:', err);
+      setFeedback({
+        type: 'warning',
+        title: 'Sebagian Pengaturan Disimpan',
+        message: 'Pengaturan disimpan di perangkat ini, namun sinkronisasi cloud mengalami kendala.',
+        details: err?.message || 'Silakan coba simpan kembali nanti.',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleResetConfirm = () => {
+    if (window.confirm('Reset seluruh data transaksi ke keadaan awal?')) {
+      onResetData();
+      setFeedback({
+        type: 'info',
+        title: 'Data Direset',
+        message: 'Seluruh riwayat transaksi telah dikembalikan ke kondisi awal (kosong).',
+      });
+    }
   };
 
   return (
-    <div className="px-4 py-3 pb-28">
-      {/* Page Title */}
-      <div className="mb-4">
-        <h1 className="text-xl font-bold text-[#0b1c30]">Pengaturan Akun</h1>
-        <p className="text-xs text-slate-500">
-          Kelola profil, foto akun, target anggaran, dan integrasi cloud
-        </p>
-      </div>
-
-      {/* Success alert toast */}
-      {isSavedToast && (
-        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-[#006948] rounded-2xl text-xs font-bold flex items-center gap-2 animate-fade-in shadow-xs">
-          <Check className="w-4 h-4 text-emerald-600" />
-          <span>Pengaturan akun dan target anggaran berhasil disimpan ke Firebase!</span>
+    <div className="px-4 py-3 pb-28 relative">
+      {/* Floating Dynamic Feedback Toast */}
+      {feedback && (
+        <div
+          role="alert"
+          className={`sticky top-2 z-50 mb-4 p-4 rounded-2xl shadow-lg border backdrop-blur-md transition-all duration-300 animate-slide-down ${
+            feedback.type === 'success'
+              ? 'bg-emerald-50/95 border-emerald-300 text-emerald-950 shadow-emerald-900/10'
+              : feedback.type === 'warning'
+              ? 'bg-amber-50/95 border-amber-300 text-amber-950 shadow-amber-900/10'
+              : 'bg-blue-50/95 border-blue-300 text-blue-950 shadow-blue-900/10'
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <div
+                className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                  feedback.type === 'success'
+                    ? 'bg-emerald-600 text-white'
+                    : feedback.type === 'warning'
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-blue-600 text-white'
+                }`}
+              >
+                {feedback.type === 'success' ? (
+                  <Check className="w-4 h-4 stroke-[2.5]" />
+                ) : feedback.type === 'warning' ? (
+                  <Sparkles className="w-4 h-4" />
+                ) : (
+                  <Info className="w-4 h-4" />
+                )}
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="text-xs font-bold tracking-tight">{feedback.title}</h4>
+                <p className="text-xs font-medium leading-relaxed opacity-90">{feedback.message}</p>
+                {feedback.details && (
+                  <p className="text-[11px] opacity-75 pt-1 leading-snug">{feedback.details}</p>
+                )}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFeedback(null)}
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-black/5 transition-colors shrink-0"
+              aria-label="Tutup notifikasi"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {/* Subtle countdown bar */}
+          <div className="w-full bg-black/10 h-1 rounded-full mt-2.5 overflow-hidden">
+            <div
+              className={`h-full animate-progress ${
+                feedback.type === 'success'
+                  ? 'bg-emerald-600'
+                  : feedback.type === 'warning'
+                  ? 'bg-amber-600'
+                  : 'bg-blue-600'
+              }`}
+            />
+          </div>
         </div>
       )}
+
+      {/* Page Title & Unsaved Alert */}
+      <div className="mb-4 flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-[#0b1c30]">Pengaturan Akun</h1>
+          <p className="text-xs text-slate-500">
+            Kelola profil, foto akun, target anggaran, dan integrasi cloud
+          </p>
+        </div>
+        {hasUnsavedChanges && (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 shrink-0 animate-pulse">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+            Ada Perubahan
+          </span>
+        )}
+      </div>
 
       {/* Profile Header Avatar Card */}
       <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs mb-4 flex flex-col items-center text-center">
@@ -92,6 +250,10 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
               src={avatarUrl}
               alt={name}
               className="w-full h-full object-cover"
+              onError={(e) => {
+                // Fallback to default avatar preset if custom URL breaks
+                (e.target as HTMLImageElement).src = AVATAR_PRESETS[0];
+              }}
             />
           </div>
           <div className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-[#006948] text-white flex items-center justify-center shadow-xs">
@@ -104,20 +266,24 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
 
         {/* Avatar Preset Selector */}
         <div className="mt-4 pt-3 border-t border-slate-100 w-full">
-          <span className="text-[11px] font-semibold text-slate-400 block mb-2 text-left">
-            Pilih Foto Profil:
-          </span>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-semibold text-slate-500">
+              Pilih Foto Profil:
+            </span>
+            <span className="text-[10px] text-slate-400">Klik untuk memilih</span>
+          </div>
           <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar py-1">
             {AVATAR_PRESETS.map((preset, idx) => (
               <button
                 key={idx}
                 type="button"
-                onClick={() => setAvatarUrl(preset)}
+                onClick={() => handleSelectPresetAvatar(preset)}
                 className={`w-9 h-9 rounded-full overflow-hidden shrink-0 border-2 transition-all ${
                   avatarUrl === preset
-                    ? 'border-[#006948] scale-110 shadow-sm'
+                    ? 'border-[#006948] ring-2 ring-emerald-400/40 scale-110 shadow-sm'
                     : 'border-transparent hover:border-slate-300 opacity-70 hover:opacity-100'
                 }`}
+                title={`Pilih foto profil ${idx + 1}`}
               >
                 <img src={preset} alt={`Avatar ${idx}`} className="w-full h-full object-cover" />
               </button>
@@ -144,6 +310,7 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full h-11 px-3.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#006948]"
+              placeholder="Contoh: Muhammad Dzikri"
               required
             />
           </div>
@@ -204,7 +371,7 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
               />
             </div>
             <span className="text-[10px] text-slate-400 mt-1 block">
-              Anggaran awal: Rp 2.000.000. Batas peringatan waspada otomatis di 80%.
+              Target anggaran saat ini: <strong className="text-slate-600">{formatRupiah(parseRupiahInput(budgetStr))}</strong>. Peringatan waspada aktif di 80%.
             </span>
           </div>
         </div>
@@ -268,24 +435,45 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
           </div>
         </div>
 
-        {/* Submit Save Button */}
+        {/* Submit Save Button with Dynamic Feedback & Loading State */}
         <button
           type="submit"
-          className="w-full h-12 bg-[#006948] hover:bg-[#005236] text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-950/20 active:scale-98 transition-all flex items-center justify-center gap-2"
+          disabled={isSaving}
+          className={`w-full h-12 font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 active:scale-98 ${
+            justSaved
+              ? 'bg-emerald-700 text-white shadow-emerald-900/30'
+              : hasUnsavedChanges
+              ? 'bg-[#006948] hover:bg-[#005236] text-white shadow-emerald-950/20 ring-2 ring-emerald-500/30'
+              : 'bg-[#006948] hover:bg-[#005236] text-white shadow-emerald-950/20'
+          }`}
         >
-          <Check className="w-4 h-4 stroke-[2.5]" />
-          <span>Simpan Pengaturan Akun</span>
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Menyimpan ke Firebase...</span>
+            </>
+          ) : justSaved ? (
+            <>
+              <Check className="w-4 h-4 stroke-[3]" />
+              <span>Pengaturan Berhasil Disimpan!</span>
+            </>
+          ) : (
+            <>
+              <Check className="w-4 h-4 stroke-[2.5]" />
+              <span>
+                {hasUnsavedChanges
+                  ? 'Simpan Perubahan Pengaturan Akun'
+                  : 'Simpan Pengaturan Akun'}
+              </span>
+            </>
+          )}
         </button>
 
         {/* Action Buttons: Reset Demo & Logout */}
         <div className="pt-2 space-y-2">
           <button
             type="button"
-            onClick={() => {
-              if (window.confirm('Reset seluruh data transaksi ke contoh awal?')) {
-                onResetData();
-              }
-            }}
+            onClick={handleResetConfirm}
             className="w-full h-10 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
           >
             <RotateCcw className="w-3.5 h-3.5" />
