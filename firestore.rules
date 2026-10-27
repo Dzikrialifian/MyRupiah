@@ -1,0 +1,127 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Common security helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // User profile document
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+        isValidId(userId) &&
+        incoming().uid == userId &&
+        incoming().name is string &&
+        incoming().name.size() > 0 &&
+        incoming().name.size() <= 100 &&
+        incoming().totalWeeklyBudget is number &&
+        incoming().totalWeeklyBudget > 0;
+
+      allow update: if isOwner(userId) &&
+        isValidId(userId) &&
+        incoming().uid == existing().uid &&
+        incoming().name is string &&
+        incoming().name.size() > 0 &&
+        incoming().name.size() <= 100 &&
+        incoming().totalWeeklyBudget is number &&
+        incoming().totalWeeklyBudget > 0;
+
+      allow delete: if isOwner(userId);
+
+      // Transactions subcollection
+      match /transactions/{transactionId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+          isValidId(transactionId) &&
+          incoming().userId == userId &&
+          incoming().id is string &&
+          incoming().id.size() <= 128 &&
+          incoming().title is string &&
+          incoming().title.size() > 0 &&
+          incoming().title.size() <= 150 &&
+          incoming().amount is number &&
+          incoming().amount >= 0 &&
+          (incoming().type == 'expense' || incoming().type == 'income') &&
+          incoming().category is string &&
+          incoming().category.size() <= 50 &&
+          incoming().categoryName is string &&
+          incoming().categoryName.size() <= 100 &&
+          incoming().paymentMethod is string &&
+          incoming().paymentMethod.size() <= 50;
+
+        allow update: if isOwner(userId) &&
+          isValidId(transactionId) &&
+          incoming().userId == existing().userId &&
+          incoming().id == existing().id &&
+          incoming().title is string &&
+          incoming().title.size() > 0 &&
+          incoming().title.size() <= 150 &&
+          incoming().amount is number &&
+          incoming().amount >= 0 &&
+          (incoming().type == 'expense' || incoming().type == 'income') &&
+          incoming().category is string &&
+          incoming().category.size() <= 50 &&
+          incoming().categoryName is string &&
+          incoming().categoryName.size() <= 100 &&
+          incoming().paymentMethod is string &&
+          incoming().paymentMethod.size() <= 50;
+
+        allow delete: if isOwner(userId) && isValidId(transactionId);
+      }
+
+      // CategoryBudgets subcollection
+      match /categoryBudgets/{budgetId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+          isValidId(budgetId) &&
+          incoming().userId == userId &&
+          incoming().name is string &&
+          incoming().name.size() > 0 &&
+          incoming().name.size() <= 100 &&
+          incoming().limit is number &&
+          incoming().limit >= 0;
+
+        allow update: if isOwner(userId) &&
+          isValidId(budgetId) &&
+          incoming().userId == existing().userId &&
+          incoming().name is string &&
+          incoming().name.size() > 0 &&
+          incoming().name.size() <= 100 &&
+          incoming().limit is number &&
+          incoming().limit >= 0;
+
+        allow delete: if isOwner(userId) && isValidId(budgetId);
+      }
+    }
+  }
+}

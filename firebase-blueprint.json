@@ -1,0 +1,69 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile, weekly budget configuration, and preferences",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 200 },
+        "totalWeeklyBudget": { "type": "number" },
+        "currentWeekText": { "type": "string", "maxLength": 50 },
+        "avatarUrl": { "type": "string", "maxLength": 500 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "totalWeeklyBudget"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Individual expense or income transaction entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 150 },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["expense", "income"] },
+        "category": { "type": "string", "maxLength": 50 },
+        "categoryName": { "type": "string", "maxLength": 100 },
+        "dateStr": { "type": "string", "maxLength": 50 },
+        "dateIso": { "type": "string", "maxLength": 20 },
+        "paymentMethod": { "type": "string", "maxLength": 50 },
+        "note": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "title", "amount", "type", "category", "categoryName", "paymentMethod"]
+    },
+    "CategoryBudget": {
+      "title": "CategoryBudget",
+      "description": "Budget limits and spent values per expense category",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 50 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "spent": { "type": "number" },
+        "limit": { "type": "number" },
+        "icon": { "type": "string", "maxLength": 20 },
+        "color": { "type": "string", "maxLength": 30 }
+      },
+      "required": ["id", "userId", "name", "limit"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profile document indexed by Firebase Auth UID"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "User's financial transactions subcollection"
+    },
+    "/users/{userId}/categoryBudgets/{budgetId}": {
+      "schema": { "$ref": "#/entities/CategoryBudget" },
+      "description": "Category budget limits and progress subcollection"
+    }
+  }
+}

@@ -45,6 +45,17 @@ import {
   importTransactionsFromSheet,
 } from './services/sheetsService';
 
+// Firebase Firestore Services
+import {
+  saveUserProfileToFirestore,
+  fetchUserProfileFromFirestore,
+  saveTransactionToFirestore,
+  deleteTransactionFromFirestore,
+  fetchTransactionsFromFirestore,
+  saveCategoryBudgetsToFirestore,
+  fetchCategoryBudgetsFromFirestore,
+} from './services/firebaseService';
+
 export default function App() {
   // Persistence state
   const [user, setUser] = useState<UserProfile>(() => {
@@ -77,8 +88,9 @@ export default function App() {
   const [dailySpends, setDailySpends] = useState<DaySpend[]>(INITIAL_DAILY_SPENDS);
   const [activeTab, setActiveTab] = useState<ScreenTab>('beranda');
 
-  // Google Sheets integration state
+  // Google & Firebase integration state
   const [googleEmail, setGoogleEmail] = useState<string | null>(null);
+  const [googleUid, setGoogleUid] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
     isConnected: false,
     spreadsheetId: getSavedSpreadsheetId(),
@@ -162,19 +174,50 @@ export default function App() {
     );
   }, [todaySpent]);
 
-  // Initialize Auth listener on mount
+  // Initialize Auth listener and Firebase Firestore syncing on mount
   useEffect(() => {
     const unsubscribe = initAuth(
-      (currentUser, token) => {
+      async (currentUser, token) => {
         setGoogleEmail(currentUser.email);
+        setGoogleUid(currentUser.uid);
         setSyncStatus((prev) => ({
           ...prev,
           isConnected: true,
           error: null,
         }));
+
+        // Load data from Firestore if exists, or seed initial data
+        try {
+          const remoteTxs = await fetchTransactionsFromFirestore(currentUser.uid);
+          if (remoteTxs && remoteTxs.length > 0) {
+            setTransactions(remoteTxs);
+          } else {
+            // Seed current transactions to Firestore
+            for (const t of transactions) {
+              await saveTransactionToFirestore(currentUser.uid, t);
+            }
+          }
+
+          const remoteProfile = await fetchUserProfileFromFirestore(currentUser.uid);
+          if (remoteProfile && remoteProfile.name) {
+            setUser((prev) => ({ ...prev, ...remoteProfile }));
+          } else {
+            await saveUserProfileToFirestore(currentUser.uid, user);
+          }
+
+          const remoteBudgets = await fetchCategoryBudgetsFromFirestore(currentUser.uid);
+          if (remoteBudgets && remoteBudgets.length > 0) {
+            setCategoryBudgets(remoteBudgets);
+          } else {
+            await saveCategoryBudgetsToFirestore(currentUser.uid, categoryBudgets);
+          }
+        } catch (err) {
+          console.warn('Firestore initial sync non-critical warning:', err);
+        }
       },
       () => {
         setGoogleEmail(null);
+        setGoogleUid(null);
         setSyncStatus((prev) => ({
           ...prev,
           isConnected: false,
@@ -221,7 +264,7 @@ export default function App() {
     []
   );
 
-  // Connect Google account & run first sync
+  // Connect Google account & run first sync for Firestore & Sheets
   const handleConnectGoogle = async () => {
     try {
       setSyncStatus((prev) => ({ ...prev, isSyncing: true, error: null }));
@@ -229,6 +272,16 @@ export default function App() {
       if (!result) return;
 
       setGoogleEmail(result.user.email);
+      setGoogleUid(result.user.uid);
+
+      // Save user & transactions to Firestore
+      await saveUserProfileToFirestore(result.user.uid, user);
+      for (const t of transactions) {
+        await saveTransactionToFirestore(result.user.uid, t);
+      }
+      await saveCategoryBudgetsToFirestore(result.user.uid, categoryBudgets);
+
+      // Sync to Google Sheets
       const sheetId = await getOrCreateSpreadsheet(result.accessToken);
       await syncAllTransactionsToSheet(result.accessToken, sheetId, transactions);
 
@@ -259,6 +312,7 @@ export default function App() {
   const handleDisconnectGoogle = async () => {
     await logout();
     setGoogleEmail(null);
+    setGoogleUid(null);
     setSyncStatus((prev) => ({
       ...prev,
       isConnected: false,
@@ -275,6 +329,11 @@ export default function App() {
       return;
     }
     await syncTransactionsIfConnected(transactions);
+    if (googleUid) {
+      for (const t of transactions) {
+        await saveTransactionToFirestore(googleUid, t);
+      }
+    }
   };
 
   // Pull / Import from Google Sheets
@@ -297,12 +356,19 @@ export default function App() {
             return acc;
           }, {});
 
-        setCategoryBudgets((prev) =>
-          prev.map((cat) => ({
-            ...cat,
-            spent: categoryMap[cat.id] || 0,
-          }))
-        );
+        const updatedBudgets = categoryBudgets.map((cat) => ({
+          ...cat,
+          spent: categoryMap[cat.id] || 0,
+        }));
+        setCategoryBudgets(updatedBudgets);
+
+        // Sync imported data to Firestore as well
+        if (googleUid) {
+          for (const t of imported) {
+            await saveTransactionToFirestore(googleUid, t);
+          }
+          await saveCategoryBudgetsToFirestore(googleUid, updatedBudgets);
+        }
       }
 
       const nowStr = new Date().toLocaleTimeString('id-ID', {
@@ -333,25 +399,32 @@ export default function App() {
     if (editId) {
       // UPDATE operation
       const oldTrx = transactions.find((t) => t.id === editId);
-      updatedList = transactions.map((t) =>
-        t.id === editId ? { ...trxData, id: editId } : t
-      );
+      const updatedItem: Transaction = { ...trxData, id: editId };
+      updatedList = transactions.map((t) => (t.id === editId ? updatedItem : t));
       setTransactions(updatedList);
 
       // Adjust category budgets
       if (oldTrx) {
-        setCategoryBudgets((prev) =>
-          prev.map((cat) => {
-            let newSpent = cat.spent;
-            if (oldTrx.type === 'expense' && cat.id === oldTrx.category) {
-              newSpent -= oldTrx.amount;
-            }
-            if (trxData.type === 'expense' && cat.id === trxData.category) {
-              newSpent += trxData.amount;
-            }
-            return { ...cat, spent: Math.max(0, newSpent) };
-          })
-        );
+        const nextBudgets = categoryBudgets.map((cat) => {
+          let newSpent = cat.spent;
+          if (oldTrx.type === 'expense' && cat.id === oldTrx.category) {
+            newSpent -= oldTrx.amount;
+          }
+          if (trxData.type === 'expense' && cat.id === trxData.category) {
+            newSpent += trxData.amount;
+          }
+          return { ...cat, spent: Math.max(0, newSpent) };
+        });
+        setCategoryBudgets(nextBudgets);
+
+        if (googleUid) {
+          saveCategoryBudgetsToFirestore(googleUid, nextBudgets).catch((e) => console.warn(e));
+        }
+      }
+
+      // Sync updated item to Firestore
+      if (googleUid) {
+        saveTransactionToFirestore(googleUid, updatedItem).catch((e) => console.warn(e));
       }
     } else {
       // CREATE operation
@@ -363,11 +436,19 @@ export default function App() {
       setTransactions(updatedList);
 
       if (newTrx.type === 'expense') {
-        setCategoryBudgets((prev) =>
-          prev.map((cat) =>
-            cat.id === newTrx.category ? { ...cat, spent: cat.spent + newTrx.amount } : cat
-          )
+        const nextBudgets = categoryBudgets.map((cat) =>
+          cat.id === newTrx.category ? { ...cat, spent: cat.spent + newTrx.amount } : cat
         );
+        setCategoryBudgets(nextBudgets);
+
+        if (googleUid) {
+          saveCategoryBudgetsToFirestore(googleUid, nextBudgets).catch((e) => console.warn(e));
+        }
+      }
+
+      // Sync new item to Firestore
+      if (googleUid) {
+        saveTransactionToFirestore(googleUid, newTrx).catch((e) => console.warn(e));
       }
     }
 
@@ -386,13 +467,21 @@ export default function App() {
     setTransactions(updatedList);
 
     if (trxToDelete.type === 'expense') {
-      setCategoryBudgets((prev) =>
-        prev.map((cat) =>
-          cat.id === trxToDelete.category
-            ? { ...cat, spent: Math.max(0, cat.spent - trxToDelete.amount) }
-            : cat
-        )
+      const nextBudgets = categoryBudgets.map((cat) =>
+        cat.id === trxToDelete.category
+          ? { ...cat, spent: Math.max(0, cat.spent - trxToDelete.amount) }
+          : cat
       );
+      setCategoryBudgets(nextBudgets);
+
+      if (googleUid) {
+        saveCategoryBudgetsToFirestore(googleUid, nextBudgets).catch((e) => console.warn(e));
+      }
+    }
+
+    // Remove from Firestore
+    if (googleUid) {
+      deleteTransactionFromFirestore(googleUid, id).catch((e) => console.warn(e));
     }
 
     // Auto sync removal to Google Sheets
@@ -526,9 +615,13 @@ export default function App() {
               <AdviceScreen
                 categoryBudgets={categoryBudgets}
                 onUpdateBudget={(id, newLimit) => {
-                  setCategoryBudgets((prev) =>
-                    prev.map((c) => (c.id === id ? { ...c, limit: newLimit } : c))
+                  const updated = categoryBudgets.map((c) =>
+                    c.id === id ? { ...c, limit: newLimit } : c
                   );
+                  setCategoryBudgets(updated);
+                  if (googleUid) {
+                    saveCategoryBudgetsToFirestore(googleUid, updated).catch((e) => console.warn(e));
+                  }
                 }}
                 onOpenTipsModal={() => setIsTipsModalOpen(true)}
               />
@@ -586,7 +679,13 @@ export default function App() {
           isOpen={isProfileModalOpen}
           onClose={() => setIsProfileModalOpen(false)}
           user={user}
-          onUpdateUser={(updated) => setUser((prev) => ({ ...prev, ...updated }))}
+          onUpdateUser={(updated) => {
+            const nextUser = { ...user, ...updated };
+            setUser(nextUser);
+            if (googleUid) {
+              saveUserProfileToFirestore(googleUid, nextUser).catch((e) => console.warn(e));
+            }
+          }}
           onResetData={handleResetDemoData}
         />
 
@@ -607,9 +706,13 @@ export default function App() {
           isOpen={isWeekPickerOpen}
           onClose={() => setIsWeekPickerOpen(false)}
           currentWeekText={user.currentWeekText}
-          onSelectWeek={(weekText) =>
-            setUser((prev) => ({ ...prev, currentWeekText: weekText }))
-          }
+          onSelectWeek={(weekText) => {
+            const nextUser = { ...user, currentWeekText: weekText };
+            setUser(nextUser);
+            if (googleUid) {
+              saveUserProfileToFirestore(googleUid, nextUser).catch((e) => console.warn(e));
+            }
+          }}
         />
       </div>
     </div>

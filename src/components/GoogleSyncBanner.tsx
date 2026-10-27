@@ -29,7 +29,7 @@ export const GoogleSyncBanner: React.FC<GoogleSyncBannerProps> = ({
           <div>
             <div className="flex items-center gap-1.5">
               <h3 className="text-xs font-bold text-[#0b1c30]">
-                Integrasi Google Sheets
+                Google Sheets & Firebase Cloud
               </h3>
               {syncStatus.isConnected && (
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -37,8 +37,8 @@ export const GoogleSyncBanner: React.FC<GoogleSyncBannerProps> = ({
             </div>
             <p className="text-[11px] text-slate-500">
               {syncStatus.isConnected && userEmail
-                ? `Terhubung: ${userEmail}`
-                : 'Sinkronkan semua data transaksi ke spreadsheet'}
+                ? `Terhubung: ${userEmail} (Firestore & Sheets Aktif)`
+                : 'Sinkronkan mutasi ke cloud Firestore & spreadsheet'}
             </p>
           </div>
         </div>
