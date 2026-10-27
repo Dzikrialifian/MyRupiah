@@ -1,0 +1,233 @@
+---
+name: Dompet Pintar
+colors:
+  surface: '#f8f9ff'
+  surface-dim: '#cbdbf5'
+  surface-bright: '#f8f9ff'
+  surface-container-lowest: '#ffffff'
+  surface-container-low: '#eff4ff'
+  surface-container: '#e5eeff'
+  surface-container-high: '#dce9ff'
+  surface-container-highest: '#d3e4fe'
+  on-surface: '#0b1c30'
+  on-surface-variant: '#3d4a42'
+  inverse-surface: '#213145'
+  inverse-on-surface: '#eaf1ff'
+  outline: '#6d7a72'
+  outline-variant: '#bccac0'
+  surface-tint: '#006c4a'
+  primary: '#006948'
+  on-primary: '#ffffff'
+  primary-container: '#00855d'
+  on-primary-container: '#f5fff7'
+  inverse-primary: '#68dba9'
+  secondary: '#006c49'
+  on-secondary: '#ffffff'
+  secondary-container: '#6cf8bb'
+  on-secondary-container: '#00714d'
+  tertiary: '#006949'
+  on-tertiary: '#ffffff'
+  tertiary-container: '#00855d'
+  on-tertiary-container: '#f5fff7'
+  error: '#ba1a1a'
+  on-error: '#ffffff'
+  error-container: '#ffdad6'
+  on-error-container: '#93000a'
+  primary-fixed: '#85f8c4'
+  primary-fixed-dim: '#68dba9'
+  on-primary-fixed: '#002114'
+  on-primary-fixed-variant: '#005137'
+  secondary-fixed: '#6ffbbe'
+  secondary-fixed-dim: '#4edea3'
+  on-secondary-fixed: '#002113'
+  on-secondary-fixed-variant: '#005236'
+  tertiary-fixed: '#68fcbf'
+  tertiary-fixed-dim: '#45dfa4'
+  on-tertiary-fixed: '#002114'
+  on-tertiary-fixed-variant: '#005137'
+  background: '#f8f9ff'
+  on-background: '#0b1c30'
+  surface-variant: '#d3e4fe'
+typography:
+  display-currency:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 36px
+    fontWeight: '800'
+    lineHeight: 44px
+    letterSpacing: -0.03em
+  display-currency-mobile:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 28px
+    fontWeight: '800'
+    lineHeight: 36px
+    letterSpacing: -0.02em
+  headline-lg:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 24px
+    fontWeight: '700'
+    lineHeight: 32px
+    letterSpacing: -0.02em
+  headline-md:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 20px
+    fontWeight: '600'
+    lineHeight: 28px
+    letterSpacing: -0.01em
+  headline-sm:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 18px
+    fontWeight: '600'
+    lineHeight: 24px
+  body-lg:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 16px
+    fontWeight: '500'
+    lineHeight: 24px
+  body-md:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 14px
+    fontWeight: '400'
+    lineHeight: 20px
+  body-sm:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 12px
+    fontWeight: '400'
+    lineHeight: 16px
+  label-lg:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 14px
+    fontWeight: '600'
+    lineHeight: 20px
+  label-md:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 12px
+    fontWeight: '600'
+    lineHeight: 16px
+    letterSpacing: 0.01em
+  label-currency:
+    fontFamily: Plus Jakarta Sans
+    fontSize: 15px
+    fontWeight: '700'
+    lineHeight: 20px
+    letterSpacing: -0.01em
+rounded:
+  sm: 0.25rem
+  DEFAULT: 0.5rem
+  md: 0.75rem
+  lg: 1rem
+  xl: 1.5rem
+  full: 9999px
+spacing:
+  gutter: 1rem
+  gutter-tablet: 1.25rem
+  margin: 1rem
+  margin-tablet: 2rem
+  space-xs: 0.25rem
+  space-sm: 0.5rem
+  space-md: 1rem
+  space-lg: 1.5rem
+  space-xl: 2rem
+---
+
+## Brand & Style
+
+This design system targets young professionals and modern Indonesian households seeking calm, effortless mastery over personal cash flow. The emotional tone is reassuring, empowering, and organized—counteracting the anxiety often associated with budgeting and expense tracking.
+
+The visual direction merges **Soft Modernism** with tactile **Micro-Card Architecture**:
+- Friendly, approachable warmth paired with high-clarity financial precision.
+- Generous internal padding and soft, pillowy contours convey safety and approachability.
+- Crisp typographic distinction gives prominent visibility to multi-digit Indonesian Rupiah figures (e.g., `Rp 12.450.000`), ensuring quick scanning without visual fatigue.
+- Indonesian UI microcopy adopts a respectful, colloquial-professional standard (ragam santai nan rapi: "Tambah Pengeluaran", "Sisa Anggaran", "Dompet Utama").
+
+## Colors
+
+The palette establishes an organic financial baseline anchored in crisp mint and sage greens, signaling positive financial growth, health, and calm.
+
+### Core Roles
+- **Primary (`#059669`)**: Main actions, primary buttons, active tab states, and positive income markers.
+- **Secondary (`#10B981`)**: Progress bars, primary accents, and selected category indicators.
+- **Tertiary (`#34D399`)**: Subtle active badge fills, graphic accents, and soft highlight rings.
+- **Neutral (`#64748B`)**: Body labels, secondary captions, and neutral borders.
+
+### Surfaces & Backgrounds
+- **Canvas Base (`#FFFFFF`)**: Pure white base for primary elevation contrast.
+- **Surface Level 1 (`#F8FAFC`)**: Canvas underlay and subtle segment container fills.
+- **Surface Level 2 (`#F1F5F9`)**: Micro-card backgrounds, input field fills, and neutral dividers.
+
+### Financial Status Indicators
+- **Warning Amber (`#F59E0B`)**: Threshold warning for budgets reaching 80%–99% capacity (e.g., "Mendekati Batas").
+- **Alert Rose (`#EF4444`)**: Critical state for 100%+ budget exhaustion (e.g., "Melebihi Anggaran") and negative cash outflows.
+- **Text Primary (`#0F172A`)**: Slate 900 for absolute contrast on Rupiah currency values and titles.
+
+## Typography
+
+The type system is powered by **Plus Jakarta Sans**, chosen for its friendly geometric curves, broad apertures, and exceptional legibility when rendering dense numeric clusters.
+
+### Currency Formatting Rules
+- Always format Indonesian Rupiah with a non-breaking space after the symbol: `Rp 250.000` (standard thousands period delimiter).
+- Use `display-currency` exclusively for total balance dashboards, account overviews, and monthly summary balance cards.
+- The currency prefix "Rp" should be styled at 80% visual weight or reduced tracking compared to the following numeric value to keep eyes anchored on the amount itself.
+- For all tabular lists and transaction summaries, render monetary values using `label-currency` or `body-lg` with `tabular-nums` font feature enabled to maintain vertical alignment down decimals and comma groupings.
+
+## Layout & Spacing
+
+A mobile-first fluid layout bounded by safe viewport edges, optimized for single-thumb navigation:
+
+- **Mobile (< 640px)**: 4-column fluid layout with `1rem` (16px) outer page margins and `1rem` column gutters. Bottom navigation bar is sticky with 16px bottom safe area clearance.
+- **Tablet (640px - 1024px)**: 8-column layout with `2rem` (32px) outer margins. Cards transition into a 2-column or 3-column micro-grid layout.
+- **Spacing Rhythm**: Governed by a base 4px/8px module. Micro-gaps inside transaction cards default to `space-sm` (8px), card interior paddings are fixed to `space-md` (16px) or `space-lg` (24px) for prominent balance summaries.
+- **Bottom Sheet Offsets**: Interactive bottom sheets snap to 35%, 65%, and 90% heights, leaving clear touch targets along the header handle.
+
+## Elevation & Depth
+
+Visual hierarchy uses **tonal layer nesting** combined with soft, warm-tinted ambient shadows. Avoid heavy dark shadows; surfaces float naturally above the canvas.
+
+- **Level 0 (Flat Canvas)**: Pure `#FFFFFF` and `#F8FAFC`. Used for screens, settings views, and broad page backgrounds.
+- **Level 1 (Card & Micro-Containers)**: Elevated via subtle boundary definitions. Box shadow: `0 4px 16px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02)` bordered by 1px solid `#F1F5F9`.
+- **Level 2 (Active Micro-Cards & Widgets)**: Balance cards and featured budget alerts. Box shadow: `0 10px 25px -4px rgba(5, 150, 105, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.03)`.
+- **Level 3 (Sticky Headers, Bottom Sheets & Modals)**: Box shadow: `0 20px 30px -6px rgba(15, 23, 42, 0.08), 0 8px 12px -4px rgba(15, 23, 42, 0.03)`.
+- **Focus Rings**: Interactive inputs and focused tiles feature an outer glow of `0 0 0 3px rgba(16, 185, 129, 0.20)`.
+
+## Shapes
+
+The design uses a generous, rounded profile (`roundedness: 2`) to maintain a friendly, soft-touch character:
+
+- **Micro-Cards & List Items**: `rounded-2xl` (1rem / 16px) ensures smooth corners across stacked lists.
+- **Hero Balance Containers & Modals**: `rounded-3xl` (1.5rem / 24px) creates distinct, cushioned containers.
+- **Buttons, Chips, and Input Bars**: Full pill styling (`rounded-full`) or `rounded-xl` (0.75rem / 12px) for form inputs to preserve readable text blocks.
+- **Status Badges & Avatar Placeholders**: Full circular/pill geometry (`rounded-full`).
+
+## Components
+
+### Buttons
+- **Primary ("Simpan", "Kirim", "Tambah Transaksi")**: Background `#059669`, text `#FFFFFF`, height 48px, `rounded-xl`, font `label-lg`. Active state scales down to 98% with `#047857`.
+- **Secondary ("Batal", "Ubah")**: Background `#F1F5F9`, text `#0F172A`, height 48px, `rounded-xl`.
+- **Floating Action Button (FAB)**: 56px circle, centered in the bottom dock, gradient `#10B981` to `#059669`, with a white `+` icon, elevated at Level 2.
+
+### Chips & Filter Badges
+- Filter pills ("Semua", "Pengeluaran", "Pemasukan", "Bulan Ini"):
+  - Unselected: Surface `#F1F5F9`, text `#64748B`, height 32px, `rounded-full`, horizontal padding 14px.
+  - Selected: Surface `#059669`, text `#FFFFFF`, font `label-md`.
+
+### Transaction Lists
+- Stacked micro-rows encased in `rounded-2xl` surfaces or partitioned with 1px `#F1F5F9` dividers.
+- Left slot: 40px rounded icon container with category-tinted soft backgrounds (e.g., `#ECFDF5` for F&B, `#FEF3C7` for Transport).
+- Middle slot: Title (e.g., "Kopi Susu Senja", "Gaji Bulanan") in `label-lg`, caption ("14:20 • BCA") in `body-sm`.
+- Right slot: Currency amount in `label-currency`. Red (`#EF4444`) prefixed with `-` for expenses; Green (`#059669`) prefixed with `+` for income.
+
+### Budget Progress Bar (Micro-Card)
+- Container: Surface `#FFFFFF`, Level 1 elevation, `rounded-2xl`, 16px padding.
+- Displays Category Name ("Makanan & Minuman") and ratio ("Rp 1.600.000 / Rp 2.000.000").
+- Progress track height: 8px, `rounded-full`, background `#F1F5F9`.
+- Progress indicator:
+  - 0% - 79%: `#10B981` (Normal / Sehat)
+  - 80% - 99%: `#F59E0B` (Mendekati Batas / 80%) with an Amber badge
+  - 100%+: `#EF4444` (Melebihi Anggaran / Penuh) with a Rose badge
+
+### Input Fields
+- Container: 48px height, `rounded-xl`, background `#F8FAFC`, border 1px solid `#E2E8F0`.
+- Dedicated **Currency Input Field**: Left-adorned fixed prefix `Rp` in bold slate, followed by large tabular numbers (`headline-lg`), auto-formatting with Indonesian thousand periods as user types.
+
+### Checkboxes & Segmented Controls
+- Checkbox: 20x20px, `rounded-md`, border `#CBD5E1`. Checked state: background `#059669` with white checkmark.
+- Segmented Control ("Harian", "Mingguan", "Bulanan"): 40px height container `#F1F5F9`, pill slider `#FFFFFF` with Level 1 shadow.

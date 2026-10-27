@@ -1,0 +1,7 @@
+{
+  "name": "My Rupiah - Dompet Pintar",
+  "description": "Aplikasi manajemen anggaran dan pencatat keuangan cerdas dengan pemantauan pengeluaran harian dan mingguan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
