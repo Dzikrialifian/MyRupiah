@@ -51,6 +51,8 @@ export interface CategoryBudget {
   color: string;
 }
 
+export type ThemePreference = 'light' | 'dark' | 'system';
+
 export interface UserProfile {
   name: string;
   greeting: string;
@@ -58,4 +60,31 @@ export interface UserProfile {
   totalWeeklyBudget: number;
   currentWeekText: string;
   email?: string;
+  themePreference?: ThemePreference;
+}
+
+export type SavingsCategory =
+  | 'emergency'
+  | 'gadget'
+  | 'holiday'
+  | 'vehicle'
+  | 'home'
+  | 'education'
+  | 'investment'
+  | 'other';
+
+export interface SavingsGoal {
+  id: string;
+  userId?: string;
+  title: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: string; // YYYY-MM-DD
+  category: SavingsCategory;
+  categoryName?: string;
+  icon?: string;
+  color?: string;
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
 }

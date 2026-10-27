@@ -4,12 +4,15 @@ import {
   INITIAL_TRANSACTIONS,
   INITIAL_DAILY_SPENDS,
   INITIAL_CATEGORY_BUDGETS,
+  INITIAL_SAVINGS_GOALS,
 } from './data/mockData';
 import {
   Transaction,
   UserProfile,
   CategoryBudget,
   DaySpend,
+  SavingsGoal,
+  ThemePreference,
 } from './types';
 import { Header } from './components/Header';
 import { GreetingSection } from './components/GreetingSection';
@@ -17,12 +20,14 @@ import { WeeklyBudgetHeroCard } from './components/WeeklyBudgetHeroCard';
 import { QuickStatsCards } from './components/QuickStatsCards';
 import { DailySpendingChart } from './components/DailySpendingChart';
 import { TipsCard } from './components/TipsCard';
+import { SavingsSummaryCard } from './components/SavingsSummaryCard';
 import { RecentTransactionsList } from './components/RecentTransactionsList';
 import { BottomNavBar, ScreenTab } from './components/BottomNavBar';
 
 // Screens
 import { AuthScreen } from './components/screens/AuthScreen';
 import { HistoryScreen } from './components/screens/HistoryScreen';
+import { SavingsScreen } from './components/screens/SavingsScreen';
 import { AnalyticsScreen } from './components/screens/AnalyticsScreen';
 import { AdviceScreen } from './components/screens/AdviceScreen';
 import { AccountSettingsScreen } from './components/screens/AccountSettingsScreen';
@@ -31,7 +36,8 @@ import { AccountSettingsScreen } from './components/screens/AccountSettingsScree
 import { TransactionFormModal } from './components/modals/TransactionFormModal';
 import { TransactionDetailModal } from './components/modals/TransactionDetailModal';
 import { DeleteConfirmationModal } from './components/modals/DeleteConfirmationModal';
-import { BudgetSettingsModal } from './components/modals/BudgetSettingsModal';
+import { SavingsGoalModal } from './components/modals/SavingsGoalModal';
+import { SavingsDepositModal } from './components/modals/SavingsDepositModal';
 import { NotificationDrawer } from './components/modals/NotificationDrawer';
 import { TipsDetailModal } from './components/modals/TipsDetailModal';
 import { WeekPickerModal } from './components/modals/WeekPickerModal';
@@ -56,6 +62,9 @@ import {
   fetchTransactionsFromFirestore,
   saveCategoryBudgetsToFirestore,
   fetchCategoryBudgetsFromFirestore,
+  saveSavingsGoalToFirestore,
+  deleteSavingsGoalFromFirestore,
+  fetchSavingsGoalsFromFirestore,
 } from './services/firebaseService';
 
 export default function App() {
@@ -76,18 +85,60 @@ export default function App() {
     try {
       const saved = localStorage.getItem('myrupiah_user');
       if (saved) return JSON.parse(saved);
-      return { ...INITIAL_USER, email: 'dzikrialifian@gmail.com' };
+      return { ...INITIAL_USER, email: 'dzikrialifian@gmail.com', themePreference: 'system' };
     } catch {
-      return { ...INITIAL_USER, email: 'dzikrialifian@gmail.com' };
+      return { ...INITIAL_USER, email: 'dzikrialifian@gmail.com', themePreference: 'system' };
     }
   });
+
+  // Dark mode theme preference state
+  const [themePreference, setThemePreference] = useState<ThemePreference>(() => {
+    try {
+      const savedTheme = localStorage.getItem('myrupiah_theme') as ThemePreference;
+      if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
+        return savedTheme;
+      }
+      return user.themePreference || 'system';
+    } catch {
+      return 'system';
+    }
+  });
+
+  const [isSystemDark, setIsSystemDark] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  // Listen for OS theme changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => setIsSystemDark(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  const isDarkModeActive = useMemo(() => {
+    if (themePreference === 'dark') return true;
+    if (themePreference === 'light') return false;
+    return isSystemDark;
+  }, [themePreference, isSystemDark]);
+
+  // Apply dark class to documentElement
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (isDarkModeActive) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkModeActive]);
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     try {
       const saved = localStorage.getItem('myrupiah_transactions');
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Clear any old mock demo transactions from earlier versions
         const isLegacyMock =
           Array.isArray(parsed) &&
           parsed.some((t: any) => t.id === 'trx-1' || t.id === 'trx-2' || t.id === 'trx-3');
@@ -109,6 +160,16 @@ export default function App() {
       return saved ? JSON.parse(saved) : INITIAL_CATEGORY_BUDGETS;
     } catch {
       return INITIAL_CATEGORY_BUDGETS;
+    }
+  });
+
+  // Savings Goals State
+  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>(() => {
+    try {
+      const saved = localStorage.getItem('myrupiah_savings_goals');
+      return saved ? JSON.parse(saved) : INITIAL_SAVINGS_GOALS;
+    } catch {
+      return INITIAL_SAVINGS_GOALS;
     }
   });
 
@@ -141,10 +202,14 @@ export default function App() {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isTipsModalOpen, setIsTipsModalOpen] = useState(false);
   const [isWeekPickerOpen, setIsWeekPickerOpen] = useState(false);
+
+  // Savings Modal states
+  const [isSavingsModalOpen, setIsSavingsModalOpen] = useState(false);
+  const [editingSavingsGoal, setEditingSavingsGoal] = useState<SavingsGoal | null>(null);
+  const [depositGoal, setDepositGoal] = useState<SavingsGoal | null>(null);
 
   // Sync to localStorage
   useEffect(() => {
@@ -161,6 +226,12 @@ export default function App() {
 
   useEffect(() => {
     try {
+      localStorage.setItem('myrupiah_theme', themePreference);
+    } catch {}
+  }, [themePreference]);
+
+  useEffect(() => {
+    try {
       localStorage.setItem('myrupiah_transactions', JSON.stringify(transactions));
     } catch {}
   }, [transactions]);
@@ -170,6 +241,12 @@ export default function App() {
       localStorage.setItem('myrupiah_category_budgets', JSON.stringify(categoryBudgets));
     } catch {}
   }, [categoryBudgets]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('myrupiah_savings_goals', JSON.stringify(savingsGoals));
+    } catch {}
+  }, [savingsGoals]);
 
   useEffect(() => {
     try {
@@ -221,19 +298,13 @@ export default function App() {
   // Helper: Load data from Firestore for a given user UID
   const loadUserFirestoreData = useCallback(async (uid: string, fallbackEmail?: string) => {
     try {
+      // 1. Transactions
       const remoteTxs = await fetchTransactionsFromFirestore(uid);
       if (remoteTxs && remoteTxs.length > 0) {
         setTransactions(remoteTxs);
-      } else {
-        // Seed current transactions to Firestore with userEmail
-        for (const t of transactions) {
-          await saveTransactionToFirestore(uid, {
-            ...t,
-            userEmail: fallbackEmail || user.email || 'dzikrialifian@gmail.com',
-          });
-        }
       }
 
+      // 2. Profile & Theme
       const remoteProfile = await fetchUserProfileFromFirestore(uid);
       if (remoteProfile && remoteProfile.name) {
         setUser((prev) => ({
@@ -241,28 +312,39 @@ export default function App() {
           ...remoteProfile,
           email: remoteProfile.email || fallbackEmail || prev.email,
         }));
+        if (remoteProfile.themePreference) {
+          setThemePreference(remoteProfile.themePreference);
+        }
       } else {
         await saveUserProfileToFirestore(uid, {
           ...user,
           email: fallbackEmail || user.email,
+          themePreference,
         });
       }
 
+      // 3. Budgets
       const remoteBudgets = await fetchCategoryBudgetsFromFirestore(uid);
       if (remoteBudgets && remoteBudgets.length > 0) {
         setCategoryBudgets(remoteBudgets);
       } else {
         await saveCategoryBudgetsToFirestore(uid, categoryBudgets);
       }
+
+      // 4. Savings Goals
+      const remoteGoals = await fetchSavingsGoalsFromFirestore(uid);
+      if (remoteGoals && remoteGoals.length > 0) {
+        setSavingsGoals(remoteGoals);
+      }
     } catch (err) {
       console.warn('Firestore initial sync non-critical warning:', err);
     }
-  }, [transactions, user, categoryBudgets]);
+  }, [user, categoryBudgets, themePreference]);
 
   // Initialize Auth listener
   useEffect(() => {
     const unsubscribe = initAuth(
-      async (currentUser, token) => {
+      async (currentUser) => {
         setGoogleEmail(currentUser.email);
         setGoogleUid(currentUser.uid);
         setIsAuthenticated(true);
@@ -339,10 +421,9 @@ export default function App() {
       await loadUserFirestoreData(uid, loggedUser.email || email);
     } catch (err: any) {
       console.warn('Firebase email login error:', err);
-      // Helpful fallback message if email/pass provider is pending in Firebase Console
       if (err.code === 'auth/operation-not-allowed') {
         setAuthError(
-          'Penyedia Email/Password belum diaktifkan di Firebase Console. Kamu bisa masuk menggunakan tombol "Masuk dengan Google" atau tombol "Akses Cepat Pengujian Demo".'
+          'Penyedia Email/Password belum diaktifkan di Firebase Console. Kamu bisa masuk menggunakan tombol "Masuk dengan Google".'
         );
       } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setAuthError('Email atau kata sandi tidak sesuai. Silakan periksa kembali.');
@@ -369,6 +450,7 @@ export default function App() {
         ...user,
         email: newUser.email || email,
         name: displayName,
+        themePreference,
       };
       setUser(updatedProfile);
       setIsAuthenticated(true);
@@ -385,7 +467,7 @@ export default function App() {
         setAuthError('Email ini sudah terdaftar. Silakan pilih tab "Masuk".');
       } else if (err.code === 'auth/operation-not-allowed') {
         setAuthError(
-          'Penyedia Email/Password belum diaktifkan di Firebase Console. Silakan gunakan opsi Google Sign-In atau Akses Cepat Demo.'
+          'Penyedia Email/Password belum diaktifkan di Firebase Console. Silakan gunakan opsi Google Sign-In.'
         );
       } else {
         setAuthError(err.message || 'Gagal mendaftarkan akun.');
@@ -413,6 +495,7 @@ export default function App() {
         email: result.user.email || user.email,
         name: result.user.displayName || user.name,
         avatarUrl: result.user.photoURL || user.avatarUrl,
+        themePreference,
       };
       setUser(updatedProfile);
 
@@ -473,6 +556,31 @@ export default function App() {
       lastSyncedAt: null,
       error: null,
     }));
+  };
+
+  // Theme Setter with Firestore synchronization
+  const handleSetTheme = async (nextTheme: ThemePreference) => {
+    setThemePreference(nextTheme);
+    setUser((prev) => ({ ...prev, themePreference: nextTheme }));
+    try {
+      localStorage.setItem('myrupiah_theme', nextTheme);
+    } catch {}
+
+    if (googleUid) {
+      try {
+        await saveUserProfileToFirestore(googleUid, {
+          ...user,
+          themePreference: nextTheme,
+        });
+      } catch (e) {
+        console.warn('Firestore theme update warning:', e);
+      }
+    }
+  };
+
+  const handleToggleTheme = () => {
+    const nextTheme: ThemePreference = isDarkModeActive ? 'light' : 'dark';
+    handleSetTheme(nextTheme);
   };
 
   // Manual Push Sync
@@ -552,7 +660,7 @@ export default function App() {
     }
   };
 
-  // CRUD: Create & Update
+  // CRUD: Create & Update Transactions
   const handleSaveTransaction = (trxData: Omit<Transaction, 'id'>, editId?: string) => {
     let updatedList: Transaction[] = [];
 
@@ -623,7 +731,7 @@ export default function App() {
     }
   };
 
-  // CRUD: Delete
+  // CRUD: Delete Transactions
   const handleDeleteTransaction = (id: string) => {
     const trxToDelete = transactions.find((t) => t.id === id);
     if (!trxToDelete) return;
@@ -655,15 +763,127 @@ export default function App() {
     }
   };
 
+  // CRUD: Savings Goals
+  const handleSaveSavingsGoal = (
+    goalData: Omit<SavingsGoal, 'id' | 'createdAt' | 'updatedAt'>,
+    editId?: string
+  ) => {
+    let updatedList: SavingsGoal[] = [];
+
+    if (editId) {
+      // UPDATE goal
+      const existing = savingsGoals.find((g) => g.id === editId);
+      const updatedItem: SavingsGoal = {
+        ...goalData,
+        id: editId,
+        userId: googleUid || undefined,
+        createdAt: existing?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      updatedList = savingsGoals.map((g) => (g.id === editId ? updatedItem : g));
+      setSavingsGoals(updatedList);
+
+      if (googleUid) {
+        saveSavingsGoalToFirestore(googleUid, updatedItem).catch((e) => console.warn(e));
+      }
+    } else {
+      // CREATE goal
+      const newGoal: SavingsGoal = {
+        ...goalData,
+        id: `goal-${Date.now()}`,
+        userId: googleUid || undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      updatedList = [newGoal, ...savingsGoals];
+      setSavingsGoals(updatedList);
+
+      if (googleUid) {
+        saveSavingsGoalToFirestore(googleUid, newGoal).catch((e) => console.warn(e));
+      }
+    }
+  };
+
+  const handleDeleteSavingsGoal = (goalId: string) => {
+    const nextList = savingsGoals.filter((g) => g.id !== goalId);
+    setSavingsGoals(nextList);
+
+    if (googleUid) {
+      deleteSavingsGoalFromFirestore(googleUid, goalId).catch((e) => console.warn(e));
+    }
+  };
+
+  const handleSavingsDeposit = (
+    goalId: string,
+    deltaAmount: number,
+    isDeposit: boolean,
+    alsoRecordTransaction: boolean
+  ) => {
+    const targetGoal = savingsGoals.find((g) => g.id === goalId);
+    if (!targetGoal) return;
+
+    const newAmount = isDeposit
+      ? targetGoal.currentAmount + deltaAmount
+      : Math.max(0, targetGoal.currentAmount - deltaAmount);
+
+    const updatedGoal: SavingsGoal = {
+      ...targetGoal,
+      currentAmount: newAmount,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const nextGoals = savingsGoals.map((g) => (g.id === goalId ? updatedGoal : g));
+    setSavingsGoals(nextGoals);
+
+    if (googleUid) {
+      saveSavingsGoalToFirestore(googleUid, updatedGoal).catch((e) => console.warn(e));
+    }
+
+    // Also record transaction entry in mutasi if selected
+    if (alsoRecordTransaction) {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      handleSaveTransaction({
+        title: isDeposit
+          ? `Setor Tabungan: ${targetGoal.title}`
+          : `Tarik Tabungan: ${targetGoal.title}`,
+        amount: deltaAmount,
+        type: isDeposit ? 'expense' : 'income',
+        category: isDeposit ? 'other' : 'income',
+        categoryName: isDeposit ? 'Tabungan & Impian' : 'Penarikan Tabungan',
+        dateStr: `Hari ini, ${timeStr}`,
+        dateIso: now.toISOString().slice(0, 10),
+        paymentMethod: 'Mutasi Tabungan',
+        note: `Transaksi tabungan target "${targetGoal.title}"`,
+      });
+    }
+  };
+
+  const handleQuickPresetCreate = (title: string, targetAmount: number, category: any) => {
+    handleSaveSavingsGoal({
+      title,
+      targetAmount,
+      currentAmount: 0,
+      targetDate: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      category,
+      categoryName: 'Tabungan Impian',
+      icon: category === 'emergency' ? '🛡️' : category === 'gadget' ? '💻' : '✈️',
+      color: '#006948',
+      note: 'Dibuat dari inspirasi cepat',
+    });
+  };
+
   // Reset to initial demo data
   const handleResetDemoData = () => {
-    setUser({ ...INITIAL_USER, email: user.email || 'dzikrialifian@gmail.com' });
+    setUser({ ...INITIAL_USER, email: user.email || 'dzikrialifian@gmail.com', themePreference });
     setTransactions(INITIAL_TRANSACTIONS);
     setCategoryBudgets(INITIAL_CATEGORY_BUDGETS);
+    setSavingsGoals(INITIAL_SAVINGS_GOALS);
     setDailySpends(INITIAL_DAILY_SPENDS);
     localStorage.removeItem('myrupiah_user');
     localStorage.removeItem('myrupiah_transactions');
     localStorage.removeItem('myrupiah_category_budgets');
+    localStorage.removeItem('myrupiah_savings_goals');
     saveSpreadsheetId(null);
   };
 
@@ -674,6 +894,8 @@ export default function App() {
         return 'Beranda';
       case 'riwayat':
         return 'Riwayat';
+      case 'tabungan':
+        return 'Rencana Tabungan';
       case 'grafik':
         return 'Grafik';
       case 'saran':
@@ -700,14 +922,16 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#eaf1ff]/60 flex justify-center selection:bg-emerald-100 selection:text-emerald-900">
-      <div className="w-full max-w-md bg-[#f8f9ff] min-h-screen shadow-2xl relative flex flex-col overflow-x-hidden border-x border-slate-200/50">
-        {/* Sticky Header */}
+    <div className="min-h-screen bg-[#eaf1ff]/60 dark:bg-[#06090e] flex justify-center selection:bg-emerald-100 selection:text-emerald-900 transition-colors">
+      <div className="w-full max-w-md bg-[#f8f9ff] dark:bg-[#0b101b] min-h-screen shadow-2xl relative flex flex-col overflow-x-hidden border-x border-slate-200/50 dark:border-slate-800/80 transition-colors">
+        {/* Sticky Header with Quick Theme Toggle */}
         <Header
           user={user}
           activeScreenTitle={activeTitle}
           onOpenNotifications={() => setIsNotificationsOpen(true)}
           onOpenProfile={() => setActiveTab('akun')}
+          isDark={isDarkModeActive}
+          onToggleTheme={handleToggleTheme}
         />
 
         {/* Dynamic Screen View */}
@@ -745,6 +969,16 @@ export default function App() {
                 onSelectDay={() => setActiveTab('riwayat')}
               />
 
+              {/* Mini Savings Card on Dashboard */}
+              <SavingsSummaryCard
+                savingsGoals={savingsGoals}
+                onOpenSavingsScreen={() => setActiveTab('tabungan')}
+                onOpenCreateGoal={() => {
+                  setEditingSavingsGoal(null);
+                  setIsSavingsModalOpen(true);
+                }}
+              />
+
               {/* Tips Cerdas My Rupiah */}
               <TipsCard onOpenTipsModal={() => setIsTipsModalOpen(true)} />
 
@@ -777,6 +1011,25 @@ export default function App() {
                 onDisconnectGoogle={handleLogout}
                 onManualSync={handleManualSync}
                 onImportFromSheets={handleImportFromSheets}
+              />
+            </div>
+          )}
+
+          {activeTab === 'tabungan' && (
+            <div className="animate-fade-in">
+              <SavingsScreen
+                savingsGoals={savingsGoals}
+                onOpenCreateModal={() => {
+                  setEditingSavingsGoal(null);
+                  setIsSavingsModalOpen(true);
+                }}
+                onEditGoal={(goal) => {
+                  setEditingSavingsGoal(goal);
+                  setIsSavingsModalOpen(true);
+                }}
+                onDeleteGoal={handleDeleteSavingsGoal}
+                onOpenDepositModal={(goal) => setDepositGoal(goal)}
+                onQuickPresetCreate={handleQuickPresetCreate}
               />
             </div>
           )}
@@ -816,6 +1069,9 @@ export default function App() {
                 onUpdateUser={async (updated) => {
                   const nextUser = { ...user, ...updated };
                   setUser(nextUser);
+                  if (updated.themePreference) {
+                    setThemePreference(updated.themePreference);
+                  }
                   if (googleUid) {
                     try {
                       await saveUserProfileToFirestore(googleUid, nextUser);
@@ -829,6 +1085,7 @@ export default function App() {
                 syncStatus={syncStatus}
                 onConnectGoogle={handleConnectGoogle}
                 onManualSync={handleManualSync}
+                onThemeSelect={handleSetTheme}
               />
             </div>
           )}
@@ -870,13 +1127,32 @@ export default function App() {
           onRequestDelete={(trx) => setDeletingTransaction(trx)}
         />
 
-        {/* Modal: Konfirmasi Hapus Transaksi (Destructive confirmation) */}
+        {/* Modal: Konfirmasi Hapus Transaksi */}
         <DeleteConfirmationModal
           isOpen={Boolean(deletingTransaction)}
           transaction={deletingTransaction}
           onClose={() => setDeletingTransaction(null)}
           onConfirmDelete={handleDeleteTransaction}
           isGoogleConnected={syncStatus.isConnected}
+        />
+
+        {/* Modal: Tambah / Edit Rencana Tabungan */}
+        <SavingsGoalModal
+          isOpen={isSavingsModalOpen}
+          initialGoal={editingSavingsGoal}
+          onClose={() => {
+            setIsSavingsModalOpen(false);
+            setEditingSavingsGoal(null);
+          }}
+          onSubmit={handleSaveSavingsGoal}
+        />
+
+        {/* Modal: Setor / Tarik Tabungan */}
+        <SavingsDepositModal
+          isOpen={Boolean(depositGoal)}
+          goal={depositGoal}
+          onClose={() => setDepositGoal(null)}
+          onConfirm={handleSavingsDeposit}
         />
 
         {/* Drawer: Notifikasi */}

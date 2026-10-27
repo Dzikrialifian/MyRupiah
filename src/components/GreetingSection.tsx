@@ -12,21 +12,21 @@ export const GreetingSection: React.FC<GreetingSectionProps> = ({
   onOpenWeekPicker,
 }) => {
   return (
-    <div className="flex items-center justify-between px-4 pt-3 pb-2">
+    <div className="flex items-center justify-between px-4 pt-3 pb-2 transition-colors">
       <div>
-        <h1 className="text-[26px] font-bold tracking-tight text-[#0b1c30] flex items-center gap-1.5 leading-tight">
+        <h1 className="text-[26px] font-bold tracking-tight text-[#0b1c30] dark:text-white flex items-center gap-1.5 leading-tight">
           Halo, {user.name}! <span className="inline-block animate-wiggle">👋</span>
         </h1>
-        <p className="text-sm font-normal text-slate-500 mt-0.5">
+        <p className="text-sm font-normal text-slate-500 dark:text-slate-400 mt-0.5">
           Selamat datang kembali
         </p>
       </div>
 
       <button
         onClick={onOpenWeekPicker}
-        className="flex items-center gap-1.5 bg-[#e5eeff] hover:bg-[#d8e7ff] text-[#006948] px-3 py-1.5 rounded-full text-xs font-semibold shadow-xs transition-all active:scale-95"
+        className="flex items-center gap-1.5 bg-[#e5eeff] dark:bg-slate-800 hover:bg-[#d8e7ff] dark:hover:bg-slate-700 text-[#006948] dark:text-emerald-400 px-3 py-1.5 rounded-full text-xs font-semibold shadow-xs transition-all active:scale-95"
       >
-        <Calendar className="w-3.5 h-3.5 text-[#006948]" />
+        <Calendar className="w-3.5 h-3.5 text-[#006948] dark:text-emerald-400" />
         <span>{user.currentWeekText}</span>
       </button>
     </div>

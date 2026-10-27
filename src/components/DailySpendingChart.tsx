@@ -20,21 +20,21 @@ export const DailySpendingChart: React.FC<DailySpendingChartProps> = ({
   const chartHeightPx = 110;
 
   return (
-    <div className="bg-white mx-4 mt-3 p-5 rounded-2xl border border-slate-100 shadow-xs relative">
+    <div className="bg-white dark:bg-slate-900 mx-4 mt-3 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs relative transition-colors">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h2 className="text-base font-bold text-[#0b1c30]">
+          <h2 className="text-base font-bold text-[#0b1c30] dark:text-white">
             Pengeluaran per Hari
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Senin - Minggu (Pekan ini)
           </p>
         </div>
 
         {/* Average Pill */}
-        <div className="flex items-center gap-1.5 bg-[#eff6ff] text-[#1e40af] px-2.5 py-1 rounded-full text-xs font-semibold">
-          <span className="w-2 h-2 rounded-full bg-[#00855d]" />
+        <div className="flex items-center gap-1.5 bg-[#eff6ff] dark:bg-slate-800 text-[#1e40af] dark:text-blue-400 px-2.5 py-1 rounded-full text-xs font-semibold">
+          <span className="w-2 h-2 rounded-full bg-[#00855d] dark:bg-emerald-400" />
           <span>Rata-rata: {formatCompactRupiah(averageAmount)}</span>
         </div>
       </div>
@@ -43,7 +43,7 @@ export const DailySpendingChart: React.FC<DailySpendingChartProps> = ({
       <div className="relative pt-6 pb-2">
         {/* Dotted Average Reference Line */}
         <div
-          className="absolute left-0 right-0 border-b border-dashed border-slate-300 pointer-events-none z-0"
+          className="absolute left-0 right-0 border-b border-dashed border-slate-300 dark:border-slate-700 pointer-events-none z-0"
           style={{
             bottom: `${Math.min(chartHeightPx, (averageAmount / maxSpend) * chartHeightPx) + 32}px`,
           }}
@@ -70,12 +70,12 @@ export const DailySpendingChart: React.FC<DailySpendingChartProps> = ({
                 {/* Floating amount / status chip */}
                 <div className="h-5 flex items-center justify-center mb-1">
                   {day.isMax && (
-                    <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded shadow-2xs">
+                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded shadow-2xs">
                       Max
                     </span>
                   )}
                   {isCurrentDay && !day.isMax && (
-                    <span className="text-[10px] font-bold text-[#006948] bg-emerald-50 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] font-bold text-[#006948] dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded">
                       {formatCompactRupiah(day.amount)}
                     </span>
                   )}
@@ -88,12 +88,12 @@ export const DailySpendingChart: React.FC<DailySpendingChartProps> = ({
                       style={{ height: `${barHeight}px` }}
                       className={`w-7 sm:w-8 rounded-lg transition-all duration-300 group-hover:scale-105 ${
                         isCurrentDay
-                          ? 'bg-[#006948] shadow-sm shadow-emerald-900/20'
-                          : 'bg-[#d8e7ff] group-hover:bg-[#cbdbf5]'
+                          ? 'bg-[#006948] dark:bg-emerald-500 shadow-sm shadow-emerald-900/20'
+                          : 'bg-[#d8e7ff] dark:bg-slate-800 group-hover:bg-[#cbdbf5] dark:group-hover:bg-slate-700'
                       }`}
                     />
                   ) : (
-                    <div className="h-10 flex items-center justify-center text-slate-300 font-bold text-base">
+                    <div className="h-10 flex items-center justify-center text-slate-300 dark:text-slate-600 font-bold text-base">
                       -
                     </div>
                   )}
@@ -102,11 +102,11 @@ export const DailySpendingChart: React.FC<DailySpendingChartProps> = ({
                 {/* Day label */}
                 <div className="mt-2.5">
                   {isCurrentDay ? (
-                    <span className="text-xs font-bold text-white bg-[#006948] px-2 py-0.5 rounded-md inline-block">
+                    <span className="text-xs font-bold text-white bg-[#006948] dark:bg-emerald-600 px-2 py-0.5 rounded-md inline-block">
                       {day.dayKey}
                     </span>
                   ) : (
-                    <span className="text-xs font-medium text-slate-500 group-hover:text-slate-900">
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white">
                       {day.dayKey}
                     </span>
                   )}
@@ -119,11 +119,11 @@ export const DailySpendingChart: React.FC<DailySpendingChartProps> = ({
 
       {/* Tooltip on hover/active */}
       {hoveredDay && (
-        <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs animate-fade-in">
-          <span className="text-slate-500 font-medium">
+        <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs animate-fade-in">
+          <span className="text-slate-500 dark:text-slate-400 font-medium">
             Pengeluaran {hoveredDay.fullName}:
           </span>
-          <span className="font-bold text-[#006948]">
+          <span className="font-bold text-[#006948] dark:text-emerald-400">
             {hoveredDay.amount > 0 ? formatRupiah(hoveredDay.amount) : 'Belum ada transaksi'}
           </span>
         </div>

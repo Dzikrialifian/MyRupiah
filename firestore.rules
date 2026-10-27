@@ -43,7 +43,8 @@ service cloud.firestore {
         incoming().totalWeeklyBudget is number &&
         incoming().totalWeeklyBudget > 0 &&
         (!('email' in incoming()) || (incoming().email is string && incoming().email.size() <= 200)) &&
-        (!('avatarUrl' in incoming()) || (incoming().avatarUrl is string && incoming().avatarUrl.size() <= 1000));
+        (!('avatarUrl' in incoming()) || (incoming().avatarUrl is string && incoming().avatarUrl.size() <= 1000)) &&
+        (!('themePreference' in incoming()) || (incoming().themePreference is string && incoming().themePreference.size() <= 20));
 
       allow update: if isOwner(userId) &&
         isValidId(userId) &&
@@ -54,7 +55,8 @@ service cloud.firestore {
         incoming().totalWeeklyBudget is number &&
         incoming().totalWeeklyBudget > 0 &&
         (!('email' in incoming()) || (incoming().email is string && incoming().email.size() <= 200)) &&
-        (!('avatarUrl' in incoming()) || (incoming().avatarUrl is string && incoming().avatarUrl.size() <= 1000));
+        (!('avatarUrl' in incoming()) || (incoming().avatarUrl is string && incoming().avatarUrl.size() <= 1000)) &&
+        (!('themePreference' in incoming()) || (incoming().themePreference is string && incoming().themePreference.size() <= 20));
 
       allow delete: if isOwner(userId);
 
@@ -127,6 +129,39 @@ service cloud.firestore {
           incoming().limit >= 0;
 
         allow delete: if isOwner(userId) && isValidId(budgetId);
+      }
+
+      // SavingsGoals subcollection
+      match /savingsGoals/{goalId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+          isValidId(goalId) &&
+          incoming().userId == userId &&
+          incoming().id is string &&
+          incoming().id.size() <= 128 &&
+          incoming().title is string &&
+          incoming().title.size() > 0 &&
+          incoming().title.size() <= 150 &&
+          incoming().targetAmount is number &&
+          incoming().targetAmount > 0 &&
+          incoming().currentAmount is number &&
+          incoming().currentAmount >= 0;
+
+        allow update: if isOwner(userId) &&
+          isValidId(goalId) &&
+          incoming().userId == existing().userId &&
+          incoming().id == existing().id &&
+          incoming().title is string &&
+          incoming().title.size() > 0 &&
+          incoming().title.size() <= 150 &&
+          incoming().targetAmount is number &&
+          incoming().targetAmount > 0 &&
+          incoming().currentAmount is number &&
+          incoming().currentAmount >= 0;
+
+        allow delete: if isOwner(userId) && isValidId(goalId);
       }
     }
   }

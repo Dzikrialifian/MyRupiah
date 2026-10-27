@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PieChart, TrendingUp, Calendar, Zap } from 'lucide-react';
+import { PieChart, TrendingUp, Zap } from 'lucide-react';
 import { Transaction, DaySpend } from '../../types';
 import { CATEGORIES } from '../../data/mockData';
 import { formatRupiah, formatCompactRupiah } from '../../utils/format';
@@ -13,7 +13,6 @@ interface AnalyticsScreenProps {
 export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
   transactions,
   dailySpends,
-  totalWeeklyBudget,
 }) => {
   const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly');
 
@@ -48,16 +47,18 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl font-bold text-[#0b1c30]">Grafik & Analisis</h1>
-          <p className="text-xs text-slate-500">Visualisasi komposisi pengeluaran kamu</p>
+          <h1 className="text-xl font-bold text-[#0b1c30] dark:text-white">Grafik & Analisis</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Visualisasi komposisi pengeluaran kamu</p>
         </div>
 
         {/* Period toggle segmented control */}
-        <div className="bg-slate-200/70 p-0.5 rounded-full flex items-center">
+        <div className="bg-slate-200/70 dark:bg-slate-800 p-0.5 rounded-full flex items-center">
           <button
             onClick={() => setPeriod('weekly')}
             className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
-              period === 'weekly' ? 'bg-white text-[#006948] shadow-xs' : 'text-slate-600'
+              period === 'weekly'
+                ? 'bg-white dark:bg-slate-700 text-[#006948] dark:text-emerald-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400'
             }`}
           >
             Pekan Ini
@@ -65,7 +66,9 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
           <button
             onClick={() => setPeriod('monthly')}
             className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
-              period === 'monthly' ? 'bg-white text-[#006948] shadow-xs' : 'text-slate-600'
+              period === 'monthly'
+                ? 'bg-white dark:bg-slate-700 text-[#006948] dark:text-emerald-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400'
             }`}
           >
             Bulan Ini
@@ -93,26 +96,26 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
       </div>
 
       {/* Insight Highlight Card */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs mb-4 flex items-start gap-3">
-        <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-          <Zap className="w-5 h-5 text-amber-600" />
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs mb-4 flex items-start gap-3 transition-colors">
+        <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+          <Zap className="w-5 h-5 text-amber-600 dark:text-amber-400" />
         </div>
         <div>
-          <h3 className="text-xs font-bold text-slate-800">Hari Pengeluaran Tertinggi</h3>
-          <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
-            <span className="font-bold text-slate-900">{maxDay?.fullName || 'Rabu'}</span> adalah hari dengan pengeluaran terbesar pekan ini sebesar <span className="font-bold text-[#ba1a1a]">{formatRupiah(maxDay?.amount || 480000)}</span>.
+          <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200">Hari Pengeluaran Tertinggi</h3>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
+            <span className="font-bold text-slate-900 dark:text-white">{maxDay?.fullName || 'Rabu'}</span> adalah hari dengan pengeluaran terbesar pekan ini sebesar <span className="font-bold text-[#ba1a1a] dark:text-rose-400">{formatRupiah(maxDay?.amount || 0)}</span>.
           </p>
         </div>
       </div>
 
       {/* Category Breakdown Section */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs">
-        <h2 className="text-sm font-bold text-[#0b1c30] mb-3">
+      <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs transition-colors">
+        <h2 className="text-sm font-bold text-[#0b1c30] dark:text-white mb-3">
           Distribusi per Kategori
         </h2>
 
         {/* Multi-segment Color Bar */}
-        <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex mb-4">
+        <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex mb-4">
           {categoryBreakdown.map((item, idx) => {
             const colors = [
               'bg-[#006948]',
@@ -135,27 +138,31 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
 
         {/* Detailed List */}
         <div className="space-y-3.5">
-          {categoryBreakdown.map((item) => (
-            <div key={item.id} className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="text-lg">{item.icon}</span>
-                <div className="min-w-0">
-                  <span className="font-bold text-slate-800 block truncate">
-                    {item.name}
-                  </span>
-                  <span className="text-slate-400 font-medium text-[11px]">
-                    {item.percentage}% dari total
+          {categoryBreakdown.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-4">Belum ada pengeluaran yang dicatat</p>
+          ) : (
+            categoryBreakdown.map((item) => (
+              <div key={item.id} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="text-lg">{item.icon}</span>
+                  <div className="min-w-0">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 block truncate">
+                      {item.name}
+                    </span>
+                    <span className="text-slate-400 font-medium text-[11px]">
+                      {item.percentage}% dari total
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="font-extrabold text-slate-900 dark:text-white tabular-nums block">
+                    {formatRupiah(item.amount)}
                   </span>
                 </div>
               </div>
-
-              <div className="text-right">
-                <span className="font-extrabold text-slate-900 tabular-nums block">
-                  {formatRupiah(item.amount)}
-                </span>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>

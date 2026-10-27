@@ -11,9 +11,31 @@
         "totalWeeklyBudget": { "type": "number" },
         "currentWeekText": { "type": "string", "maxLength": 50 },
         "avatarUrl": { "type": "string", "maxLength": 500 },
+        "themePreference": { "type": "string", "enum": ["light", "dark", "system"] },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "name", "totalWeeklyBudget"]
+    },
+    "SavingsGoal": {
+      "title": "SavingsGoal",
+      "description": "User savings plan and target progress",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 150 },
+        "targetAmount": { "type": "number" },
+        "currentAmount": { "type": "number" },
+        "targetDate": { "type": "string", "maxLength": 30 },
+        "category": { "type": "string", "maxLength": 50 },
+        "categoryName": { "type": "string", "maxLength": 100 },
+        "icon": { "type": "string", "maxLength": 50 },
+        "color": { "type": "string", "maxLength": 30 },
+        "note": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "title", "targetAmount", "currentAmount"]
     },
     "Transaction": {
       "title": "Transaction",
@@ -65,6 +87,10 @@
     "/users/{userId}/categoryBudgets/{budgetId}": {
       "schema": { "$ref": "#/entities/CategoryBudget" },
       "description": "Category budget limits and progress subcollection"
+    },
+    "/users/{userId}/savingsGoals/{goalId}": {
+      "schema": { "$ref": "#/entities/SavingsGoal" },
+      "description": "User's savings goals and progress subcollection"
     }
   }
 }

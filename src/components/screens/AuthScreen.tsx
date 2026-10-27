@@ -39,10 +39,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'domain ini';
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#eafaf2] via-[#f0fbf6] to-[#f8f9ff] flex flex-col justify-center items-center px-4 py-8">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-150/80 p-6 sm:p-8 relative overflow-hidden animate-scale-up">
+    <div className="min-h-screen bg-gradient-to-b from-[#eafaf2] via-[#f0fbf6] to-[#f8f9ff] dark:from-[#06090e] dark:via-[#0b101b] dark:to-[#06090e] flex flex-col justify-center items-center px-4 py-8 transition-colors">
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-150/80 dark:border-slate-800 p-6 sm:p-8 relative overflow-hidden animate-scale-up transition-colors">
         {/* Decorative background glow */}
-        <div className="absolute -top-12 -right-12 w-40 h-40 bg-emerald-200/30 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-12 -right-12 w-40 h-40 bg-emerald-200/30 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
         {/* Brand Header */}
         <div className="text-center mb-6">
@@ -60,13 +60,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               <circle cx="18" cy="14" r="1" fill="currentColor" />
             </svg>
           </div>
-          <span className="text-[11px] font-extrabold tracking-widest text-[#006948] uppercase">
+          <span className="text-[11px] font-extrabold tracking-widest text-[#006948] dark:text-emerald-400 uppercase">
             MY RUPIAH • DOMPET PINTAR
           </span>
-          <h1 className="text-2xl font-extrabold text-[#0b1c30] mt-1 tracking-tight">
+          <h1 className="text-2xl font-extrabold text-[#0b1c30] dark:text-white mt-1 tracking-tight">
             {isRegister ? 'Daftar Akun Baru' : 'Masuk ke Akun'}
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             {isRegister
               ? 'Daftar dengan email Anda untuk mulai mengelola keuangan'
               : 'Gunakan email terdaftar Anda untuk mengakses catatan transaksi'}

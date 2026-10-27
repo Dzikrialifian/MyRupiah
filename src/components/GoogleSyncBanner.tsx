@@ -20,22 +20,22 @@ export const GoogleSyncBanner: React.FC<GoogleSyncBannerProps> = ({
   onImportFromSheets,
 }) => {
   return (
-    <div className="bg-white rounded-2xl border border-emerald-150 p-4 shadow-xs mb-4">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-emerald-150 dark:border-slate-800 p-4 shadow-xs mb-4 transition-colors">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#006948] flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-[#006948] dark:text-emerald-400 flex items-center justify-center shrink-0">
             <FileSpreadsheet className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <h3 className="text-xs font-bold text-[#0b1c30]">
+              <h3 className="text-xs font-bold text-[#0b1c30] dark:text-white">
                 Google Sheets & Firebase Cloud
               </h3>
               {syncStatus.isConnected && (
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               )}
             </div>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
               {syncStatus.isConnected && userEmail
                 ? `Terhubung: ${userEmail} (Firestore & Sheets Aktif)`
                 : 'Sinkronkan mutasi ke cloud Firestore & spreadsheet'}
@@ -49,7 +49,7 @@ export const GoogleSyncBanner: React.FC<GoogleSyncBannerProps> = ({
             <button
               onClick={onConnectGoogle}
               disabled={syncStatus.isSyncing}
-              className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs active:scale-95 transition-all"
+              className="flex items-center gap-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs active:scale-95 transition-all"
             >
               {/* Google G logo */}
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
@@ -78,7 +78,7 @@ export const GoogleSyncBanner: React.FC<GoogleSyncBannerProps> = ({
                 onClick={onManualSync}
                 disabled={syncStatus.isSyncing}
                 title="Sinkronkan Sekarang"
-                className="w-8 h-8 rounded-xl bg-emerald-50 text-[#006948] hover:bg-emerald-100 flex items-center justify-center transition-all active:scale-95"
+                className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-[#006948] dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 flex items-center justify-center transition-all active:scale-95"
               >
                 <RefreshCw
                   className={`w-4 h-4 ${syncStatus.isSyncing ? 'animate-spin' : ''}`}
@@ -87,7 +87,7 @@ export const GoogleSyncBanner: React.FC<GoogleSyncBannerProps> = ({
               <button
                 onClick={onDisconnectGoogle}
                 title="Putuskan Akun"
-                className="w-8 h-8 rounded-xl bg-slate-100 text-slate-500 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-all"
+                className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 flex items-center justify-center transition-all"
               >
                 <LogOut className="w-3.5 h-3.5" />
               </button>
@@ -98,9 +98,9 @@ export const GoogleSyncBanner: React.FC<GoogleSyncBannerProps> = ({
 
       {/* Sync Status Info Bar */}
       {syncStatus.isConnected && (
-        <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-          <div className="flex items-center gap-1.5 text-slate-600">
-            <CheckCircle2 className="w-3.5 h-3.5 text-[#006948]" />
+        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+            <CheckCircle2 className="w-3.5 h-3.5 text-[#006948] dark:text-emerald-400" />
             <span>
               {syncStatus.lastSyncedAt
                 ? `Tersinkron: ${syncStatus.lastSyncedAt}`
@@ -112,7 +112,7 @@ export const GoogleSyncBanner: React.FC<GoogleSyncBannerProps> = ({
             <button
               onClick={onImportFromSheets}
               disabled={syncStatus.isSyncing}
-              className="text-[#006948] hover:underline font-semibold"
+              className="text-[#006948] dark:text-emerald-400 hover:underline font-semibold"
             >
               Impor dari Sheet
             </button>
@@ -122,7 +122,7 @@ export const GoogleSyncBanner: React.FC<GoogleSyncBannerProps> = ({
                 href={`https://docs.google.com/spreadsheets/d/${syncStatus.spreadsheetId}/edit`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-[#006948] hover:underline font-bold"
+                className="flex items-center gap-1 text-[#006948] dark:text-emerald-400 hover:underline font-bold"
               >
                 <span>Buka Sheet</span>
                 <ExternalLink className="w-3 h-3" />
@@ -134,7 +134,7 @@ export const GoogleSyncBanner: React.FC<GoogleSyncBannerProps> = ({
 
       {/* Error display if any */}
       {syncStatus.error && (
-        <div className="mt-2 text-xs text-red-600 flex items-center gap-1.5 bg-red-50 p-2 rounded-lg">
+        <div className="mt-2 text-xs text-red-600 dark:text-red-400 flex items-center gap-1.5 bg-red-50 dark:bg-red-950/40 p-2 rounded-lg">
           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
           <span>{syncStatus.error}</span>
         </div>

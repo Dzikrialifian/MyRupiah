@@ -1,4 +1,4 @@
-import { CategoryBudget, CategoryId, CategoryInfo, DaySpend, Transaction, UserProfile } from '../types';
+import { CategoryBudget, CategoryId, CategoryInfo, DaySpend, Transaction, UserProfile, SavingsCategory, SavingsGoal } from '../types';
 
 export const INITIAL_USER: UserProfile = {
   name: 'Rian',
@@ -139,4 +139,73 @@ export const INITIAL_CATEGORY_BUDGETS: CategoryBudget[] = [
     color: '#be185d',
   },
 ];
+
+export const INITIAL_SAVINGS_GOALS: SavingsGoal[] = [];
+
+export interface SavingsCategoryInfo {
+  id: SavingsCategory;
+  name: string;
+  icon: string;
+  color: string;
+  bgColor: string;
+}
+
+export const SAVINGS_CATEGORIES: Record<SavingsCategory, SavingsCategoryInfo> = {
+  emergency: {
+    id: 'emergency',
+    name: 'Dana Darurat',
+    icon: '🛡️',
+    color: '#006948',
+    bgColor: 'bg-emerald-50 dark:bg-emerald-950/40 text-[#006948] dark:text-emerald-400',
+  },
+  gadget: {
+    id: 'gadget',
+    name: 'Gadget & Elektronik',
+    icon: '💻',
+    color: '#2563eb',
+    bgColor: 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400',
+  },
+  holiday: {
+    id: 'holiday',
+    name: 'Liburan & Healing',
+    icon: '✈️',
+    color: '#0284c7',
+    bgColor: 'bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400',
+  },
+  vehicle: {
+    id: 'vehicle',
+    name: 'Kendaraan & Servis',
+    icon: '🚗',
+    color: '#d97706',
+    bgColor: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400',
+  },
+  home: {
+    id: 'home',
+    name: 'Rumah & Properti',
+    icon: '🏠',
+    color: '#7c3aed',
+    bgColor: 'bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400',
+  },
+  education: {
+    id: 'education',
+    name: 'Pendidikan & Kursus',
+    icon: '🎓',
+    color: '#0891b2',
+    bgColor: 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400',
+  },
+  investment: {
+    id: 'investment',
+    name: 'Investasi & Usaha',
+    icon: '📈',
+    color: '#059669',
+    bgColor: 'bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400',
+  },
+  other: {
+    id: 'other',
+    name: 'Target Lainnya',
+    icon: '✨',
+    color: '#db2777',
+    bgColor: 'bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400',
+  },
+};
 

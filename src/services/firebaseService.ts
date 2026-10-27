@@ -8,7 +8,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db, auth } from './auth';
-import { Transaction, UserProfile, CategoryBudget } from '../types';
+import { Transaction, UserProfile, CategoryBudget, SavingsGoal } from '../types';
 
 export enum OperationType {
   CREATE = 'create',
@@ -76,6 +76,7 @@ export async function saveUserProfileToFirestore(userId: string, user: UserProfi
         totalWeeklyBudget: user.totalWeeklyBudget,
         currentWeekText: user.currentWeekText,
         avatarUrl: user.avatarUrl,
+        themePreference: user.themePreference || 'system',
         updatedAt: new Date().toISOString(),
       },
       { merge: true }
@@ -98,6 +99,7 @@ export async function fetchUserProfileFromFirestore(userId: string): Promise<Par
       totalWeeklyBudget: data.totalWeeklyBudget,
       currentWeekText: data.currentWeekText,
       avatarUrl: data.avatarUrl,
+      themePreference: data.themePreference || 'system',
     };
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
@@ -218,6 +220,85 @@ export async function fetchCategoryBudgetsFromFirestore(userId: string): Promise
         limit: data.limit,
         icon: data.icon || '🏷️',
         color: data.color || '#006948',
+      });
+    });
+
+    return items;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+  }
+}
+
+// Savings Goals Firestore operations
+export async function saveSavingsGoalToFirestore(
+  userId: string,
+  goal: SavingsGoal
+): Promise<void> {
+  const path = `users/${userId}/savingsGoals/${goal.id}`;
+  try {
+    const goalRef = doc(db, 'users', userId, 'savingsGoals', goal.id);
+    await setDoc(
+      goalRef,
+      {
+        id: goal.id,
+        userId,
+        title: goal.title,
+        targetAmount: goal.targetAmount,
+        currentAmount: goal.currentAmount,
+        targetDate: goal.targetDate,
+        category: goal.category,
+        categoryName: goal.categoryName || '',
+        icon: goal.icon || 'PiggyBank',
+        color: goal.color || '#006948',
+        note: goal.note || '',
+        createdAt: goal.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function deleteSavingsGoalFromFirestore(
+  userId: string,
+  goalId: string
+): Promise<void> {
+  const path = `users/${userId}/savingsGoals/${goalId}`;
+  try {
+    const goalRef = doc(db, 'users', userId, 'savingsGoals', goalId);
+    await deleteDoc(goalRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+export async function fetchSavingsGoalsFromFirestore(
+  userId: string
+): Promise<SavingsGoal[]> {
+  const path = `users/${userId}/savingsGoals`;
+  try {
+    const goalsCollection = collection(db, 'users', userId, 'savingsGoals');
+    const snap = await getDocs(goalsCollection);
+    const items: SavingsGoal[] = [];
+
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      items.push({
+        id: data.id || docSnap.id,
+        userId: data.userId || userId,
+        title: data.title,
+        targetAmount: data.targetAmount,
+        currentAmount: data.currentAmount || 0,
+        targetDate: data.targetDate || '',
+        category: data.category || 'other',
+        categoryName: data.categoryName,
+        icon: data.icon || 'PiggyBank',
+        color: data.color || '#006948',
+        note: data.note || undefined,
+        createdAt: data.createdAt || new Date().toISOString(),
+        updatedAt: data.updatedAt || new Date().toISOString(),
       });
     });
 

@@ -15,8 +15,11 @@ import {
   Loader2,
   Sparkles,
   Info,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
-import { UserProfile } from '../../types';
+import { UserProfile, ThemePreference } from '../../types';
 import { formatRupiah, parseRupiahInput } from '../../utils/format';
 import { SyncStatus } from '../../services/sheetsService';
 
@@ -28,6 +31,7 @@ interface AccountSettingsScreenProps {
   syncStatus: SyncStatus;
   onConnectGoogle: () => void;
   onManualSync: () => void;
+  onThemeSelect?: (theme: ThemePreference) => void;
 }
 
 interface ToastFeedback {
@@ -53,11 +57,13 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
   onResetData,
   syncStatus,
   onConnectGoogle,
+  onThemeSelect,
 }) => {
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email || 'dzikrialifian@gmail.com');
   const [budgetStr, setBudgetStr] = useState(user.totalWeeklyBudget.toString());
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
+  const [theme, setTheme] = useState<ThemePreference>(user.themePreference || 'system');
 
   // States for feedback notifications
   const [isSaving, setIsSaving] = useState(false);
@@ -70,9 +76,10 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
     setEmail(user.email || 'dzikrialifian@gmail.com');
     setBudgetStr(user.totalWeeklyBudget.toString());
     setAvatarUrl(user.avatarUrl);
+    setTheme(user.themePreference || 'system');
   }, [user]);
 
-  // Auto-dismiss toast after 4 seconds
+  // Auto-dismiss toast after 4.5 seconds
   useEffect(() => {
     if (!feedback) return;
     const timer = setTimeout(() => {
@@ -88,9 +95,10 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
       name.trim() !== user.name.trim() ||
       email.trim() !== (user.email || '').trim() ||
       currentBudget !== user.totalWeeklyBudget ||
-      avatarUrl.trim() !== user.avatarUrl.trim()
+      avatarUrl.trim() !== user.avatarUrl.trim() ||
+      theme !== (user.themePreference || 'system')
     );
-  }, [name, email, budgetStr, avatarUrl, user]);
+  }, [name, email, budgetStr, avatarUrl, theme, user]);
 
   const handleSelectPresetAvatar = (preset: string) => {
     setAvatarUrl(preset);
@@ -100,6 +108,27 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
       message: 'Foto profil baru telah dipilih.',
       details: "Klik tombol 'Simpan Pengaturan Akun' di bawah untuk menerapkan perubahan ke akun Anda.",
     });
+  };
+
+  const handleThemeChange = async (newTheme: ThemePreference) => {
+    setTheme(newTheme);
+    if (onThemeSelect) {
+      onThemeSelect(newTheme);
+    }
+    // Immediately sync theme preference to Firestore and local state
+    try {
+      await onUpdateUser({ themePreference: newTheme });
+      const themeLabel =
+        newTheme === 'dark' ? 'Mode Gelap (Dark)' : newTheme === 'light' ? 'Mode Terang (Light)' : 'Otomatis Sistem';
+      setFeedback({
+        type: 'success',
+        title: 'Tema Berhasil Diubah!',
+        message: `Tema aplikasi diatur ke ${themeLabel}.`,
+        details: 'Preferensi tema telah disinkronkan ke Firestore untuk semua perangkat Anda.',
+      });
+    } catch (err: any) {
+      console.warn('Error saving theme to Firestore:', err);
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -114,6 +143,7 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
     if (email.trim() !== (user.email || '').trim()) changedFields.push(`Email (${email.trim()})`);
     if (validBudget !== user.totalWeeklyBudget) changedFields.push(`Batas Anggaran (${formatRupiah(validBudget)})`);
     if (avatarUrl.trim() !== user.avatarUrl.trim()) changedFields.push('Foto Profil');
+    if (theme !== (user.themePreference || 'system')) changedFields.push(`Tema (${theme})`);
 
     try {
       await onUpdateUser({
@@ -121,6 +151,7 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
         email: email.trim() || user.email,
         totalWeeklyBudget: validBudget,
         avatarUrl: avatarUrl.trim() || user.avatarUrl,
+        themePreference: theme,
       });
 
       setJustSaved(true);
@@ -169,10 +200,10 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
           role="alert"
           className={`sticky top-2 z-50 mb-4 p-4 rounded-2xl shadow-lg border backdrop-blur-md transition-all duration-300 animate-slide-down ${
             feedback.type === 'success'
-              ? 'bg-emerald-50/95 border-emerald-300 text-emerald-950 shadow-emerald-900/10'
+              ? 'bg-emerald-50/95 dark:bg-emerald-950/90 border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 shadow-emerald-900/10'
               : feedback.type === 'warning'
-              ? 'bg-amber-50/95 border-amber-300 text-amber-950 shadow-amber-900/10'
-              : 'bg-blue-50/95 border-blue-300 text-blue-950 shadow-blue-900/10'
+              ? 'bg-amber-50/95 dark:bg-amber-950/90 border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-100 shadow-amber-900/10'
+              : 'bg-blue-50/95 dark:bg-blue-950/90 border-blue-300 dark:border-blue-700 text-blue-950 dark:text-blue-100 shadow-blue-900/10'
           }`}
         >
           <div className="flex items-start justify-between gap-3">
@@ -205,21 +236,21 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
             <button
               type="button"
               onClick={() => setFeedback(null)}
-              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-black/5 transition-colors shrink-0"
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/5 transition-colors shrink-0"
               aria-label="Tutup notifikasi"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
           {/* Subtle countdown bar */}
-          <div className="w-full bg-black/10 h-1 rounded-full mt-2.5 overflow-hidden">
+          <div className="w-full bg-black/10 dark:bg-white/10 h-1 rounded-full mt-2.5 overflow-hidden">
             <div
               className={`h-full animate-progress ${
                 feedback.type === 'success'
-                  ? 'bg-emerald-600'
+                  ? 'bg-emerald-600 dark:bg-emerald-400'
                   : feedback.type === 'warning'
-                  ? 'bg-amber-600'
-                  : 'bg-blue-600'
+                  ? 'bg-amber-600 dark:bg-amber-400'
+                  : 'bg-blue-600 dark:bg-blue-400'
               }`}
             />
           </div>
@@ -229,21 +260,21 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
       {/* Page Title & Unsaved Alert */}
       <div className="mb-4 flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[#0b1c30]">Pengaturan Akun</h1>
-          <p className="text-xs text-slate-500">
-            Kelola profil, foto akun, target anggaran, dan integrasi cloud
+          <h1 className="text-xl font-bold text-[#0b1c30] dark:text-white">Pengaturan Akun</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Kelola profil, preferensi tema, target anggaran, dan integrasi cloud
           </p>
         </div>
         {hasUnsavedChanges && (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 shrink-0 animate-pulse">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shrink-0 animate-pulse">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-600 dark:bg-amber-400" />
             Ada Perubahan
           </span>
         )}
       </div>
 
       {/* Profile Header Avatar Card */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs mb-4 flex flex-col items-center text-center">
+      <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xs mb-4 flex flex-col items-center text-center transition-colors">
         <div className="relative mb-3">
           <div className="w-20 h-20 rounded-full overflow-hidden ring-4 ring-emerald-500/20 shadow-md">
             <img
@@ -251,26 +282,25 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
               alt={name}
               className="w-full h-full object-cover"
               onError={(e) => {
-                // Fallback to default avatar preset if custom URL breaks
                 (e.target as HTMLImageElement).src = AVATAR_PRESETS[0];
               }}
             />
           </div>
-          <div className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-[#006948] text-white flex items-center justify-center shadow-xs">
+          <div className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-[#006948] dark:bg-emerald-600 text-white flex items-center justify-center shadow-xs">
             <Camera className="w-3.5 h-3.5" />
           </div>
         </div>
 
-        <h2 className="text-base font-bold text-[#0b1c30]">{name}</h2>
-        <span className="text-xs text-slate-500 mt-0.5">{email}</span>
+        <h2 className="text-base font-bold text-[#0b1c30] dark:text-white">{name}</h2>
+        <span className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{email}</span>
 
         {/* Avatar Preset Selector */}
-        <div className="mt-4 pt-3 border-t border-slate-100 w-full">
+        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 w-full">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-semibold text-slate-500">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
               Pilih Foto Profil:
             </span>
-            <span className="text-[10px] text-slate-400">Klik untuk memilih</span>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500">Klik untuk memilih</span>
           </div>
           <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar py-1">
             {AVATAR_PRESETS.map((preset, idx) => (
@@ -280,8 +310,8 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
                 onClick={() => handleSelectPresetAvatar(preset)}
                 className={`w-9 h-9 rounded-full overflow-hidden shrink-0 border-2 transition-all ${
                   avatarUrl === preset
-                    ? 'border-[#006948] ring-2 ring-emerald-400/40 scale-110 shadow-sm'
-                    : 'border-transparent hover:border-slate-300 opacity-70 hover:opacity-100'
+                    ? 'border-[#006948] dark:border-emerald-400 ring-2 ring-emerald-400/40 scale-110 shadow-sm'
+                    : 'border-transparent hover:border-slate-300 dark:hover:border-slate-600 opacity-70 hover:opacity-100'
                 }`}
                 title={`Pilih foto profil ${idx + 1}`}
               >
@@ -294,48 +324,103 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
 
       {/* Main Settings Form */}
       <form onSubmit={handleSave} className="space-y-4">
+        {/* Section: Tema Aplikasi (Dark Mode / Light Mode) */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xs space-y-3 transition-colors">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-[#006948] dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Sun className="w-3.5 h-3.5" />
+              <span>Tema Aplikasi (Dark Mode)</span>
+            </h3>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+              Sinkron ke Firestore
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+            <button
+              type="button"
+              onClick={() => handleThemeChange('light')}
+              className={`py-2 px-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 transition-all ${
+                theme === 'light'
+                  ? 'bg-white text-[#006948] shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Sun className="w-4 h-4 text-amber-500" />
+              <span>Terang</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleThemeChange('dark')}
+              className={`py-2 px-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 transition-all ${
+                theme === 'dark'
+                  ? 'bg-slate-700 text-emerald-400 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Moon className="w-4 h-4 text-indigo-400" />
+              <span>Gelap</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleThemeChange('system')}
+              className={`py-2 px-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 transition-all ${
+                theme === 'system'
+                  ? 'bg-white dark:bg-slate-700 text-[#006948] dark:text-emerald-400 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Monitor className="w-4 h-4 text-slate-500 dark:text-slate-300" />
+              <span>Sistem</span>
+            </button>
+          </div>
+          <span className="text-[10px] text-slate-400 dark:text-slate-500 block leading-tight">
+            Preferensi tema disimpan otomatis di profil Firestore dan tetap sinkron di semua perangkat.
+          </span>
+        </div>
+
         {/* Section 1: Profil Pengguna */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs space-y-3.5">
-          <h3 className="text-xs font-bold text-[#006948] uppercase tracking-wider flex items-center gap-1.5">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xs space-y-3.5 transition-colors">
+          <h3 className="text-xs font-bold text-[#006948] dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
             <User className="w-3.5 h-3.5" />
             <span>Informasi Pribadi</span>
           </h3>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
               Nama Lengkap / Panggilan
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full h-11 px-3.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#006948]"
+              className="w-full h-11 px-3.5 bg-[#F8FAFC] dark:bg-slate-800/70 border border-[#E2E8F0] dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-[#006948] dark:focus:border-emerald-500"
               placeholder="Contoh: Muhammad Dzikri"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
               Email Akun Terdaftar
             </label>
-            <div className="flex items-center bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3.5 h-11">
+            <div className="flex items-center bg-[#F8FAFC] dark:bg-slate-800/70 border border-[#E2E8F0] dark:border-slate-700 rounded-xl px-3.5 h-11">
               <Mail className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full text-xs font-medium text-slate-800 bg-transparent outline-none"
+                className="w-full text-xs font-medium text-slate-800 dark:text-white bg-transparent outline-none"
                 required
               />
             </div>
-            <span className="text-[10px] text-slate-400 mt-1 block">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 block">
               Mutasi transaksi di cloud Firebase & spreadsheet disinkronkan atas email ini.
             </span>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
               Custom Foto Profil (URL Gambar)
             </label>
             <input
@@ -343,55 +428,55 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
               value={avatarUrl}
               onChange={(e) => setAvatarUrl(e.target.value)}
               placeholder="https://..."
-              className="w-full h-10 px-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-xs text-slate-700 outline-none focus:border-[#006948]"
+              className="w-full h-10 px-3 bg-[#F8FAFC] dark:bg-slate-800/70 border border-[#E2E8F0] dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-200 outline-none focus:border-[#006948] dark:focus:border-emerald-500"
             />
           </div>
         </div>
 
         {/* Section 2: Target & Anggaran */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs space-y-3.5">
-          <h3 className="text-xs font-bold text-[#006948] uppercase tracking-wider flex items-center gap-1.5">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xs space-y-3.5 transition-colors">
+          <h3 className="text-xs font-bold text-[#006948] dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
             <Target className="w-3.5 h-3.5" />
             <span>Target Anggaran Mingguan</span>
           </h3>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
               Batas Anggaran per Pekan (Rp)
             </label>
-            <div className="flex items-center bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl px-3.5 h-11 focus-within:border-[#006948]">
-              <span className="text-xs font-bold text-slate-500 mr-2">Rp</span>
+            <div className="flex items-center bg-[#F8FAFC] dark:bg-slate-800/70 border border-[#E2E8F0] dark:border-slate-700 rounded-xl px-3.5 h-11 focus-within:border-[#006948] dark:focus-within:border-emerald-500">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-2">Rp</span>
               <input
                 type="text"
                 inputMode="numeric"
                 value={new Intl.NumberFormat('id-ID').format(parseRupiahInput(budgetStr))}
                 onChange={(e) => setBudgetStr(e.target.value.replace(/[^\d]/g, ''))}
-                className="w-full text-sm font-bold text-slate-900 bg-transparent outline-none tabular-nums"
+                className="w-full text-sm font-bold text-slate-900 dark:text-white bg-transparent outline-none tabular-nums"
                 required
               />
             </div>
-            <span className="text-[10px] text-slate-400 mt-1 block">
-              Target anggaran saat ini: <strong className="text-slate-600">{formatRupiah(parseRupiahInput(budgetStr))}</strong>. Peringatan waspada aktif di 80%.
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 block">
+              Target anggaran saat ini: <strong className="text-slate-600 dark:text-slate-300">{formatRupiah(parseRupiahInput(budgetStr))}</strong>. Peringatan waspada aktif di 80%.
             </span>
           </div>
         </div>
 
         {/* Section 3: Status Integrasi Cloud */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-xs space-y-3">
-          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-            <Shield className="w-3.5 h-3.5 text-[#006948]" />
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xs space-y-3 transition-colors">
+          <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+            <Shield className="w-3.5 h-3.5 text-[#006948] dark:text-emerald-400" />
             <span>Status Layanan Cloud</span>
           </h3>
 
           {/* Firebase Firestore card */}
-          <div className="p-3 bg-emerald-50/70 border border-emerald-150 rounded-2xl flex items-center justify-between">
+          <div className="p-3 bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-150 dark:border-emerald-800/50 rounded-2xl flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <Database className="w-5 h-5 text-[#006948]" />
+              <Database className="w-5 h-5 text-[#006948] dark:text-emerald-400" />
               <div>
-                <span className="text-xs font-bold text-slate-900 block">
+                <span className="text-xs font-bold text-slate-900 dark:text-white block">
                   Firebase Firestore Database
                 </span>
-                <span className="text-[10px] text-emerald-800 font-medium">
+                <span className="text-[10px] text-emerald-800 dark:text-emerald-300 font-medium">
                   Tersambung • Asia-East1 (Auto-save)
                 </span>
               </div>
@@ -400,14 +485,14 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
           </div>
 
           {/* Google Sheets card */}
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
+          <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <FileSpreadsheet className="w-5 h-5 text-emerald-700" />
+              <FileSpreadsheet className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
               <div>
-                <span className="text-xs font-bold text-slate-900 block">
+                <span className="text-xs font-bold text-slate-900 dark:text-white block">
                   Google Spreadsheet
                 </span>
-                <span className="text-[10px] text-slate-500 font-medium">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                   {syncStatus.isConnected ? 'Tersinkronkan' : 'Belum Terhubung'}
                 </span>
               </div>
@@ -418,7 +503,7 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
                 href={`https://docs.google.com/spreadsheets/d/${syncStatus.spreadsheetId}/edit`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-[#006948] font-bold hover:underline"
+                className="flex items-center gap-1 text-xs text-[#006948] dark:text-emerald-400 font-bold hover:underline"
               >
                 <span>Buka</span>
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -427,7 +512,7 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
               <button
                 type="button"
                 onClick={onConnectGoogle}
-                className="px-2.5 py-1 bg-white border border-slate-200 text-xs font-bold rounded-lg hover:bg-slate-50"
+                className="px-2.5 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-xs font-bold text-slate-800 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600"
               >
                 Hubungkan
               </button>
@@ -441,10 +526,10 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
           disabled={isSaving}
           className={`w-full h-12 font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 active:scale-98 ${
             justSaved
-              ? 'bg-emerald-700 text-white shadow-emerald-900/30'
+              ? 'bg-emerald-700 dark:bg-emerald-600 text-white shadow-emerald-900/30'
               : hasUnsavedChanges
-              ? 'bg-[#006948] hover:bg-[#005236] text-white shadow-emerald-950/20 ring-2 ring-emerald-500/30'
-              : 'bg-[#006948] hover:bg-[#005236] text-white shadow-emerald-950/20'
+              ? 'bg-[#006948] hover:bg-[#005236] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white shadow-emerald-950/20 ring-2 ring-emerald-500/30'
+              : 'bg-[#006948] hover:bg-[#005236] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white shadow-emerald-950/20'
           }`}
         >
           {isSaving ? (
@@ -474,7 +559,7 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
           <button
             type="button"
             onClick={handleResetConfirm}
-            className="w-full h-10 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
+            className="w-full h-10 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset Data Demo Awal</span>
@@ -483,7 +568,7 @@ export const AccountSettingsScreen: React.FC<AccountSettingsScreenProps> = ({
           <button
             type="button"
             onClick={onLogout}
-            className="w-full h-11 bg-red-50 hover:bg-red-100 text-[#ba1a1a] font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
+            className="w-full h-11 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/40 text-[#ba1a1a] dark:text-red-400 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
           >
             <LogOut className="w-4 h-4" />
             <span>Keluar dari Akun (Logout)</span>
